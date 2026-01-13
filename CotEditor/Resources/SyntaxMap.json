@@ -44,6 +44,18 @@
 
     ]
   },
+  "Assembly (ca65)" : {
+    "extensions" : [
+      "s",
+      "asm"
+    ],
+    "filenames" : [
+
+    ],
+    "interpreters" : [
+
+    ]
+  },
   "BBCode" : {
     "extensions" : [
 
