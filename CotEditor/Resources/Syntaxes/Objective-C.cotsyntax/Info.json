@@ -1,0 +1,16 @@
+{
+  "fileMap" : {
+    "extensions" : [
+      "m",
+      "h"
+    ]
+  },
+  "kind" : "code",
+  "metadata" : {
+    "author" : "shuang886",
+    "distributionURL" : "https://coteditor.com",
+    "lastModified" : "2026-04-26",
+    "license" : "Same as CotEditor",
+    "version" : "1.0.0"
+  }
+}

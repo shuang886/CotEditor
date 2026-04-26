@@ -1,5 +1,5 @@
 {
-  "originHash" : "b00f2cd169c6cfb4911517284ef7f9f142946c8fc1369eb4facb5bddaa1f1572",
+  "originHash" : "a0509b2cbe34c76f13851f1fdcf561e3dd07d9442cd4c5f6ed55926b0765f70d",
   "pins" : [
     {
       "identity" : "sparkle",
@@ -179,6 +179,15 @@
       "state" : {
         "revision" : "f969cd3ae3f9fbd4e43205431d0ae286014c05b5",
         "version" : "0.5.3"
+      }
+    },
+    {
+      "identity" : "tree-sitter-objc",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tree-sitter-grammars/tree-sitter-objc",
+      "state" : {
+        "revision" : "18802acf31d0b5c1c1d50bdbc9eb0e1636cab9ed",
+        "version" : "3.0.2"
       }
     },
     {

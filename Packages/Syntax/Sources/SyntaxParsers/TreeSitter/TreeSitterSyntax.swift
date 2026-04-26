@@ -40,6 +40,7 @@ import TreeSitterLatex
 import TreeSitterLua
 import TreeSitterMake
 import TreeSitterMarkdown
+import TreeSitterObjc
 import TreeSitterPHP
 import TreeSitterPython
 import TreeSitterRuby
@@ -65,6 +66,7 @@ public enum TreeSitterSyntax: String, CaseIterable, Sendable {
     case lua = "Lua"
     case makefile = "Makefile"
     case markdown = "Markdown"
+    case objc = "Objective-C"
     case php = "PHP"
     case python = "Python"
     case ruby = "Ruby"
@@ -116,6 +118,7 @@ public enum TreeSitterSyntax: String, CaseIterable, Sendable {
             case .lua: unsafe tree_sitter_lua()
             case .makefile: unsafe tree_sitter_make()
             case .markdown: unsafe tree_sitter_markdown()
+            case .objc: unsafe tree_sitter_objc()
             case .php: unsafe tree_sitter_php()
             case .python: unsafe tree_sitter_python()
             case .ruby: unsafe tree_sitter_ruby()

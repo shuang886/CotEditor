@@ -332,6 +332,7 @@
 				2AAAE6E326DB82F800C5F0AC /* XCRemoteSwiftPackageReference "Sparkle" */,
 				2AB756AF2C25BBA4005E04C3 /* XCRemoteSwiftPackageReference "SwiftLintPlugins" */,
 				2ABB27CC2C3824DE00AFCD0B /* XCRemoteSwiftPackageReference "swift-numerics" */,
+				B01D03F42F9E95C500210168 /* XCRemoteSwiftPackageReference "tree-sitter-objc" */,
 			);
 			preferredProjectObjectVersion = 100;
 			productRefGroup = 2A7380232CAD911F00E870E5 /* Products */;
@@ -1063,6 +1064,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 3.0.0;
+			};
+		};
+		B01D03F42F9E95C500210168 /* XCRemoteSwiftPackageReference "tree-sitter-objc" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tree-sitter-grammars/tree-sitter-objc";
+			requirement = {
+				kind = exactVersion;
+				version = 3.0.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
