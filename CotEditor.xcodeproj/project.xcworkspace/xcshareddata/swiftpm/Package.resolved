@@ -1,5 +1,5 @@
 {
-  "originHash" : "b00f2cd169c6cfb4911517284ef7f9f142946c8fc1369eb4facb5bddaa1f1572",
+  "originHash" : "a02c36082d3e4b3ac867f65474c591643c988e69d4637d7352b981cd4c9d71f0",
   "pins" : [
     {
       "identity" : "sparkle",
@@ -152,6 +152,15 @@
       "state" : {
         "branch" : "swiftPackage",
         "revision" : "e27d10e475cb091fb15df58a0d055ff6464e6024"
+      }
+    },
+    {
+      "identity" : "tree-sitter-lilypond",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nwhetsell/tree-sitter-lilypond",
+      "state" : {
+        "branch" : "main",
+        "revision" : "0790d0dd272d4728b4a466bb71f57ce7381116aa"
       }
     },
     {

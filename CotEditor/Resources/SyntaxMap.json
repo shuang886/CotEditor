@@ -232,6 +232,11 @@
       "cls"
     ]
   },
+  "LilyPond" : {
+    "extensions" : [
+      "ly"
+    ]
+  },
   "Lisp" : {
     "extensions" : [
       "lisp",
