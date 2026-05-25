@@ -52,6 +52,8 @@ struct SyntaxMappingTableTests {
         #expect(table.syntaxName(forFilename: "main.swift") == "Swift")
         #expect(table.syntaxName(forFilename: "script.py") == "Python")
         #expect(table.syntaxName(forFilename: "noext") == nil)
+        #expect(table.syntaxName(forFilename: "test.") == nil)
+        #expect(table.syntaxName(forFilename: ".swift") == nil)
     }
     
     
@@ -77,9 +79,10 @@ struct SyntaxMappingTableTests {
     
     @Test func syntaxNameForShebang() {
         
-        let table = SyntaxMappingTable(interpreters: ["python3": ["Python"], "ruby": ["Ruby"]])
+        let table = SyntaxMappingTable(interpreters: ["python3": ["Python"], "python": ["Python"], "ruby": ["Ruby"]])
         
         #expect(table.syntaxName(forContent: "#!/usr/bin/env python3\nimport os") == "Python")
+        #expect(table.syntaxName(forContent: "#!/usr/bin/env -S python -u\nimport os") == "Python")
         #expect(table.syntaxName(forContent: "#!/usr/bin/ruby") == "Ruby")
         #expect(table.syntaxName(forContent: "no shebang here") == nil)
     }
@@ -114,7 +117,7 @@ struct SyntaxMappingTableTests {
     @Test func buildPriority() {
         
         let maps: [String: Syntax.FileMap] = [
-            "UserSyntax": .init(extensions: ["txt"]),
+            "UserSyntax": .init(extensions: ["TXT"]),
             "BundledSyntax": .init(extensions: ["txt"]),
         ]
         
@@ -123,6 +126,7 @@ struct SyntaxMappingTableTests {
         
         #expect(table.extensions["txt"]?.first == "UserSyntax")
         #expect(table.extensions["txt"]?.count == 2)
+        #expect(table.syntaxName(forFilename: "document.txt") == "UserSyntax")
     }
     
     
@@ -132,6 +136,7 @@ struct SyntaxMappingTableTests {
         #expect(SyntaxMappingTable.scanInterpreterInShebang("swift") == nil)
         #expect(SyntaxMappingTable.scanInterpreterInShebang("#!/usr/bin/swift") == "swift")
         #expect(SyntaxMappingTable.scanInterpreterInShebang("#!/usr/bin/env swift") == "swift")
+        #expect(SyntaxMappingTable.scanInterpreterInShebang("#!/usr/bin/env -S swift -frontend") == "swift")
         #expect(SyntaxMappingTable.scanInterpreterInShebang("#!/usr/bin/env swift\nabc") == "swift")
         #expect(SyntaxMappingTable.scanInterpreterInShebang("#!/usr/bin/osascript -l JavaScript") == "osascript")
     }

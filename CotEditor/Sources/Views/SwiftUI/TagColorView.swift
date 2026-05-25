@@ -24,6 +24,7 @@
 //
 
 import SwiftUI
+import DocumentFile
 
 struct TagsView: View {
     
@@ -39,7 +40,7 @@ struct TagsView: View {
         let description = tags.map(\.name).formatted(.list(type: .and, width: .short))
         
         ZStack(alignment: .trailing) {
-            ForEach(Array(tags.enumerated()), id: \.offset) { index, tag in
+            ForEach(tags.enumerated(), id: \.offset) { index, tag in
                 TagColorView(color: tag.color)
                     .overlay {
                         if self.isSelected {

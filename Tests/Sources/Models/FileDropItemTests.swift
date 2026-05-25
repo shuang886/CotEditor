@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2020 1024jp
+//  © 2020-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 //  limitations under the License.
 //
 
+import Foundation
 import Testing
 @testable import CotEditor
 
@@ -71,5 +72,31 @@ struct FileDropItemTests {
         #expect(!item.supports(extension: nil, scope: "bar"))
         #expect(!item.supports(extension: "JPG", scope: nil))
         #expect(!item.supports(extension: nil, scope: nil))
+    }
+    
+    
+    @Test func dictionaryRoundTripWithoutDescription() {
+        
+        let dictionary = [
+            "formatString": "![<<<FILENAME-NOSUFFIX>>>](<<<RELATIVE-PATH>>>)",
+            "extensions": "jpg, jpeg",
+            "scope": "Markdown",
+        ]
+        
+        let item = FileDropItem(dictionary: dictionary)
+        
+        #expect(item.description == nil)
+        #expect(item.dictionary == dictionary)
+    }
+    
+    
+    @Test func dropTextWithWebURL() throws {
+        
+        let item = FileDropItem(format: "[<<<FILENAME-NOSUFFIX>>>](<<<RELATIVE-PATH>>>) <<<ABSOLUTE-PATH>>>")
+        let droppedURL = try #require(URL(string: "https://example.com/assets/image.png"))
+        let documentURL = URL(filePath: "/Documents/index.md")
+        let expected = "[image](https://example.com/assets/image.png) https://example.com/assets/image.png"
+        
+        #expect(item.dropText(forFileURL: droppedURL, documentURL: documentURL) == expected)
     }
 }

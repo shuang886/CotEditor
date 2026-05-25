@@ -1748,7 +1748,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Orientation"
+            "value" : "Orientación"
           }
         },
         "fr" : {
@@ -8246,7 +8246,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajustar Linea"
+            "value" : "Ajustar línea"
           }
         },
         "fr" : {
@@ -14288,7 +14288,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lineas"
+            "value" : "Líneas"
           }
         },
         "fr" : {
@@ -15998,7 +15998,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convertir sangria a espacios"
+            "value" : "Convertir sangría en espacios"
           }
         },
         "fr" : {
@@ -20678,7 +20678,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Sélectionner la colonne haut"
+            "value" : "Sélectionner la colonne en bas"
           }
         },
         "it" : {
@@ -21482,7 +21482,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tipo Font"
+            "value" : "Tipo di font"
           }
         },
         "ja" : {
@@ -22952,7 +22952,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convertir sangria en tabulaciones"
+            "value" : "Convertir sangría en tabulaciones"
           }
         },
         "fr" : {
@@ -23408,7 +23408,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostar guias de sangria"
+            "value" : "Mostrar guías de sangría"
           }
         },
         "fr" : {
@@ -24434,7 +24434,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cuenta avanzada de carácteres…"
+            "value" : "Recuento avanzado de caracteres…"
           }
         },
         "fr" : {
@@ -25875,6 +25875,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "取代文字"
+          }
+        }
+      }
+    },
+    "UFU-ir-16q.title" : {
+      "comment" : "Class = \"NSMenuItem\"; title = \"Folder Find\"; ObjectID = \"UFU-ir-16q\";",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Folder Find"
           }
         }
       }
@@ -27404,7 +27416,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Sélectionner la colonne en bas"
+            "value" : "Sélectionner la colonne en haut"
           }
         },
         "it" : {

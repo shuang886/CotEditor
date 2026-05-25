@@ -9,7 +9,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2019-2024 1024jp
+//  © 2019-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -45,8 +45,66 @@ struct NSLayoutManagerTests {
         #expect(!layoutManager.hasTemporaryAttribute(.foregroundColor, in: NSRange(..<4)))
         #expect(layoutManager.hasTemporaryAttribute(.foregroundColor, in: NSRange(3..<6)))
         #expect(layoutManager.hasTemporaryAttribute(.foregroundColor, in: NSRange(6..<8)))
+        #expect(!layoutManager.hasTemporaryAttribute(.foregroundColor, in: NSRange(5..<5)))
         #expect(!layoutManager.hasTemporaryAttribute(.foregroundColor, in: NSRange(7..<7)))
         #expect(!layoutManager.hasTemporaryAttribute(.foregroundColor, in: NSRange(7..<textStorage.length)))
+    }
+    
+    
+    @Test func lineFragmentRange() {
+        
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer()
+        layoutManager.addTextContainer(textContainer)
+        
+        let textStorage = NSTextStorage(string: "dog\ncat")
+        textStorage.addLayoutManager(layoutManager)
+        layoutManager.ensureLayout(for: textContainer)
+        
+        #expect(layoutManager.lineFragmentRange(at: 0) == NSRange(0..<3))
+        #expect(layoutManager.lineFragmentRange(at: textStorage.length) == NSRange(4..<7))
+    }
+    
+    
+    @Test(arguments: ["\u{000A}", "\u{000B}", "\u{000C}", "\u{000D}", "\u{0085}", "\u{2028}", "\u{2029}"])
+    func lineFragmentRangeAtTrailingNewline(lineEnding: String) {
+        
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer()
+        layoutManager.addTextContainer(textContainer)
+        
+        let textStorage = NSTextStorage(string: "dog" + lineEnding)
+        textStorage.addLayoutManager(layoutManager)
+        layoutManager.ensureLayout(for: textContainer)
+        
+        #expect(layoutManager.lineFragmentRange(at: textStorage.length) == NSRange(4..<4))
+    }
+    
+    
+    @Test func lineFragmentRangeAtTrailingNewlineWithoutLayout() {
+        
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer()
+        layoutManager.addTextContainer(textContainer)
+        
+        let textStorage = NSTextStorage(string: "dog\r\n")
+        textStorage.addLayoutManager(layoutManager)
+        
+        #expect(layoutManager.lineFragmentRange(at: textStorage.length) == NSRange(5..<5))
+    }
+    
+    
+    @Test func lineFragmentRangeInEmptyString() {
+        
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer()
+        layoutManager.addTextContainer(textContainer)
+        
+        let textStorage = NSTextStorage(string: "")
+        textStorage.addLayoutManager(layoutManager)
+        layoutManager.ensureLayout(for: textContainer)
+        
+        #expect(layoutManager.lineFragmentRange(at: 0) == NSRange(0..<0))
     }
     
     

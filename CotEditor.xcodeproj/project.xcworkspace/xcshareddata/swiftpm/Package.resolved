@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sparkle-project/Sparkle",
       "state" : {
-        "revision" : "066e75a8b3e99962685d6a90cdd5293ebffd9261",
-        "version" : "2.9.1"
+        "revision" : "6276ba2b404829d139c45ff98427cf90e2efc59b",
+        "version" : "2.9.2"
       }
     },
     {
@@ -67,10 +67,10 @@
     {
       "identity" : "tree-sitter-c",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/1024jp/tree-sitter-c",
+      "location" : "https://github.com/tree-sitter/tree-sitter-c",
       "state" : {
-        "branch" : "swiftPackage",
-        "revision" : "5d2ee65083eaf1523ef73f5720442bb28ec17aa8"
+        "revision" : "b780e47fc780ddc8da13afa35a3f4ed5c157823d",
+        "version" : "0.24.2"
       }
     },
     {
@@ -250,7 +250,7 @@
       "location" : "https://github.com/alex-pinkus/tree-sitter-swift",
       "state" : {
         "branch" : "with-generated-files",
-        "revision" : "190aedc3042a2a1fcc17838eb05b2b2f2c0b7880"
+        "revision" : "7b7909f2f6b9414be0958275f4c8e5d69c3bca43"
       }
     },
     {
@@ -267,8 +267,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/1024jp/WFColorCode",
       "state" : {
-        "revision" : "f261a91c064cdc9ab5271e3466c9faf5d358dc7b",
-        "version" : "3.0.1"
+        "revision" : "4c0805e432240f315fb94c7875c992a22f78898b",
+        "version" : "4.0.2"
       }
     },
     {

@@ -46,6 +46,8 @@ extension NSTextView {
     
     /// Returns the location of the beginning of the current visual line considering indent.
     ///
+    /// - Parameter location: The character location for which to return the line beginning.
+    /// - Returns: The character location of the line beginning.
     /// - Note: This API requires TextKit 1.
     final func locationOfBeginningOfLine(for location: Int) -> Int {
         
@@ -55,8 +57,14 @@ extension NSTextView {
         let lineRange = string.lineRange(at: location)
         
         if let layoutManager {
+            let location = switch self.selectionAffinity {
+                case .upstream: location - 1
+                case .downstream: location
+                @unknown default: location
+            }
+            
             // beginning of current visual line
-            let visualLineLocation = layoutManager.lineFragmentRange(at: location - 1).location
+            let visualLineLocation = layoutManager.lineFragmentRange(at: location).location
             
             if lineRange.location < visualLineLocation {
                 return visualLineLocation
@@ -85,6 +93,9 @@ extension NSTextView {
 extension String {
     
     /// Returns the character just before the given range.
+    ///
+    /// - Parameter range: The range to inspect.
+    /// - Returns: The character just before `range`, or `nil` if the range starts at the beginning.
     func character(before range: NSRange) -> Unicode.Scalar? {
         
         guard range.lowerBound > 0 else { return nil }
@@ -96,6 +107,9 @@ extension String {
     
     
     /// Returns the character just after the given range.
+    ///
+    /// - Parameter range: The range to inspect.
+    /// - Returns: The character just after `range`, or `nil` if no character follows it.
     func character(after range: NSRange) -> Unicode.Scalar? {
         
         let index = String.UnicodeScalarIndex(utf16Offset: range.upperBound, in: self)

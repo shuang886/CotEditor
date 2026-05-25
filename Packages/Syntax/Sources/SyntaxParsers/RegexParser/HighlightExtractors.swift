@@ -79,7 +79,7 @@ struct BeginEndStringExtractor: HighlightExtractable {
         var ranges: [NSRange] = []
         
         var location = range.lowerBound
-        while location != NSNotFound {
+        while location < range.upperBound {
             // find start string
             let beginRange = (string as NSString).range(of: self.begin, options: self.options, range: NSRange(location..<range.upperBound))
             location = beginRange.upperBound
@@ -93,7 +93,10 @@ struct BeginEndStringExtractor: HighlightExtractable {
             let endRange = (string as NSString).range(of: self.end, options: self.options, range: NSRange(location..<upperBound))
             location = endRange.upperBound
             
-            guard endRange.location != NSNotFound else { continue }
+            guard endRange.location != NSNotFound else {
+                location = upperBound
+                continue
+            }
             
             ranges.append(NSRange(beginRange.lowerBound..<endRange.upperBound))
             
@@ -122,8 +125,7 @@ struct RegularExpressionExtractor: HighlightExtractable {
     
     func ranges(in string: String, range: NSRange) throws -> [NSRange] {
         
-        try self.regex.cancellableMatches(in: string, options: [.withTransparentBounds, .withoutAnchoringBounds], range: range)
-            .map(\.range)
+        try self.regex.cancellableMatchRanges(in: string, options: [.withTransparentBounds, .withoutAnchoringBounds], range: range)
     }
 }
 
@@ -167,6 +169,11 @@ struct BeginEndRegularExpressionExtractor: HighlightExtractable {
             let upperBound = self.isMultiline
                 ? range.upperBound
                 : min(range.upperBound, (string as NSString).lineContentsEndIndex(at: beginRange.upperBound))
+            
+            guard searchStartIndex <= upperBound else {
+                location = searchStartIndex
+                continue
+            }
             
             // find end pattern
             let endRange = self.endRegex.rangeOfFirstMatch(in: string, options: options, range: NSRange(searchStartIndex..<upperBound))

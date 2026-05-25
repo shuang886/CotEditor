@@ -535,7 +535,7 @@
         }
       }
     },
-    "File extensions of dropped file (comma separated)." : {
+    "File extensions of dropped file (comma-separated)." : {
       "comment" : "tooltip",
       "localizations" : {
         "bg" : {
@@ -553,19 +553,19 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dateisuffixe der abgelegte Datei (Komma-getrennt)."
+            "value" : "Dateisuffixe der abgelegten Datei (durch Kommas getrennt)."
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "File extensions of dropped file (comma separated)."
+            "value" : "File extensions of dropped file (comma-separated)."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Extensiones de nombre de archivo del archivo eliminado (separado de comas)."
+            "value" : "Extensiones del archivo soltado (separadas por comas)."
           }
         },
         "fr" : {
@@ -577,7 +577,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Estensione dei file rilasciati (valori separati da virgola)."
+            "value" : "Estensioni dei file trascinati (separate da virgole)."
           }
         },
         "ja" : {
@@ -589,7 +589,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "떨군 파일의 확장자 (반점으로 구문됨)."
+            "value" : "떨군 파일의 확장자(쉼표로 구분)."
           }
         },
         "nl" : {
@@ -638,6 +638,113 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拖放檔案的副檔名（逗號分隔）。"
+          }
+        }
+      }
+    },
+    "Image File" : {
+      "comment" : "menu item header",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл с изображение"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obrázkový soubor"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilddatei"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image File"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivo de imagen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichier image"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File immagine"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画像ファイル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미지 파일"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afbeeldingsbestand"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plik obrazu"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arquivo de imagem"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл изображения"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resim Dosyası"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图像文件"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "圖像檔案"
+          }
+        },
+        "zh-HK" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "影像檔案"
           }
         }
       }
@@ -1295,6 +1402,113 @@
         }
       }
     },
+    "Text File" : {
+      "comment" : "menu item header",
+      "localizations" : {
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текстов файл"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Textový soubor"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Textdatei"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text File"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivo de texto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichier texte"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File di testo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "テキストファイル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "텍스트 파일"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tekstbestand"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plik tekstowy"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arquivo de texto"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текстовый файл"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metin Dosyası"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文本文件"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字檔案"
+          }
+        },
+        "zh-HK" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字檔案"
+          }
+        }
+      }
+    },
     "Text to be inserted by a command in the menu or by keyboard shortcut:" : {
       "localizations" : {
         "bg" : {
@@ -1336,7 +1550,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Testo da inserire con una abbreviazione o un comando da menu:"
+            "value" : "Testo da inserire con un comando di menu o una scorciatoia da tastiera:"
           }
         },
         "ja" : {

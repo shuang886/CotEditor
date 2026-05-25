@@ -70,14 +70,12 @@ extension EditorTextView {
     /// Shows the custom surround sheet.
     @IBAction func surroundSelection(_ sender: Any?) {
         
-        let view = CustomSurroundView(pair: self.customSurroundPair) { [weak self] pair in
-            self?.surroundSelections(begin: pair.begin, end: pair.end)
-            self?.customSurroundPair = pair
+        self.window?.beginSheet {
+            CustomSurroundView(pair: self.customSurroundPair) { [weak self] pair in
+                self?.surroundSelections(begin: pair.begin, end: pair.end)
+                self?.customSurroundPair = pair
+            }
         }
-        let viewController = NSHostingController(rootView: view)
-        viewController.rootView.dismiss = { viewController.dismiss(nil) }
-        
-        self.viewControllerForSheet?.presentAsSheet(viewController)
     }
 }
 
@@ -85,6 +83,11 @@ extension EditorTextView {
 extension NSTextView {
     
     /// Inserts strings around selections.
+    ///
+    /// - Parameters:
+    ///   - begin: The string to insert before each selection.
+    ///   - end: The string to insert after each selection.
+    /// - Returns: `true` if the selections were surrounded; otherwise, `false`.
     @discardableResult final func surroundSelections(begin: String, end: String) -> Bool {
         
         guard

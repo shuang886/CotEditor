@@ -36,7 +36,20 @@ struct QuotePairRuleTests {
         let escaped = QuotePairRule(pair: SymbolPair("\"", "\""), escapeCharacter: "\\")
         let rules = [first, duplicate, escaped]
         
-        #expect(rules.distinctForMatching == [first, escaped])
+        #expect(rules.distinctForMatching == [
+            QuotePairRule(pair: SymbolPair("\"", "\""), prefixes: ["r", "f"]),
+            escaped,
+        ])
+    }
+    
+    
+    @Test func distinctForMatchingKeepsPrefixlessRule() {
+        
+        let prefixed = QuotePairRule(pair: SymbolPair("\"", "\""), prefixes: ["r"])
+        let prefixless = QuotePairRule(pair: SymbolPair("\"", "\""))
+        let rules = [prefixed, prefixless]
+        
+        #expect(rules.distinctForMatching == [prefixless])
     }
     
     
@@ -62,6 +75,22 @@ struct QuotePairRuleTests {
         let range = string.rangeOfQuotePair(at: string.index(1), candidates: rules)
         
         #expect(range == string.index(1)...string.index(5))
+    }
+    
+    
+    @Test func rangeOfQuotePairPrefersPrefixedRule() {
+        
+        let string = "$@\"a\"\"b\""
+        let rules = [
+            QuotePairRule(pair: SymbolPair("\"", "\""), escapeCharacter: "\\"),
+            QuotePairRule(pair: SymbolPair("\"", "\""), escapeCharacter: "\"", prefixes: ["@", "$@", "@$"]),
+        ]
+        
+        let openingRange = string.rangeOfQuotePair(at: string.index(2), candidates: rules)
+        let closingRange = string.rangeOfQuotePair(at: string.index(7), candidates: rules)
+        
+        #expect(openingRange == string.index(2)...string.index(7))
+        #expect(closingRange == string.index(2)...string.index(7))
     }
     
     

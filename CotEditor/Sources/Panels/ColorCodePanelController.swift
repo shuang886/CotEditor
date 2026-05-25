@@ -1,5 +1,5 @@
 //
-//  ColorPanelController.swift
+//  ColorCodePanelController.swift
 //
 //  CotEditor
 //  https://coteditor.com
@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2014-2025 1024jp
+//  © 2014-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -146,7 +146,7 @@ private struct ColorCodePanelAccessory: View {
                 .onChange(of: self.type) { _, newValue in
                     self.apply(type: newValue)
                 }
-                .labelsHidden()
+                .labelsVisibility(.hidden)
                 
                 Button(String(localized: "Insert", table: "ColorCode", comment: "button label"), action: self.submit)
                     .keyboardShortcut(.defaultAction)
@@ -162,10 +162,8 @@ private struct ColorCodePanelAccessory: View {
     /// Inserts the color code to the selection of the frontmost document.
     private func submit() {
         
-        self.apply(colorCode: self.colorCode)
-        
         guard
-            !self.colorCode.isEmpty,
+            self.apply(colorCode: self.colorCode),
             NSApp.sendAction(#selector((any ColorCodeReceiver).insertColorCode), to: nil, from: self.colorCode)
         else { return NSSound.beep() }
     }
@@ -173,17 +171,21 @@ private struct ColorCodePanelAccessory: View {
     
     /// Sets the color representing the given code to the color panel and selects the corresponding color code type.
     ///
-    /// - Parameter colorCode: The color code of the color to set.
-    private func apply(colorCode: String) {
+    /// - Parameters:
+    ///   - colorCode: The color code of the color to set.
+    /// - Returns: `true` if the given code represents a color; otherwise, `false`.
+    @discardableResult private func apply(colorCode: String) -> Bool {
         
         var type: ColorCodeType?
         guard
             let color = NSColor(colorCode: colorCode, type: &type),
             let type
-        else { return }
+        else { return false }
         
         self.panel.color = color
         self.type = type.rawValue
+        
+        return true
     }
     
     
@@ -193,11 +195,14 @@ private struct ColorCodePanelAccessory: View {
     private func apply(type rawValue: Int) {
         
         guard
-            let type = ColorCodeType(rawValue: rawValue),
+            var type = ColorCodeType(rawValue: rawValue),
             let color = self.panel.color.usingColorSpace(.genericRGB),
-            let colorCode = color.colorCode(type: type)
+            let colorCode = self.colorCode(for: color, type: &type)
         else { return }
         
+        if self.type != type.rawValue {
+            self.type = type.rawValue
+        }
         self.colorCode = colorCode
     }
     
@@ -207,26 +212,44 @@ private struct ColorCodePanelAccessory: View {
     /// - Parameter color: The color.
     private func apply(color: NSColor) {
         
-        let type = ColorCodeType(rawValue: self.type) ?? .hex
+        var type = ColorCodeType(rawValue: self.type) ?? .hex
         let color = color.usingColorSpace(.genericRGB)
         
-        guard var colorCode = color?.colorCode(type: type) else { return assertionFailure() }
+        guard let color, let colorCode = self.colorCode(for: color, type: &type) else { return assertionFailure() }
+        
+        if self.type != type.rawValue {
+            self.type = type.rawValue
+        }
+        self.colorCode = colorCode
+    }
+    
+    
+    /// Returns the color code for a color.
+    ///
+    /// - Parameters:
+    ///   - color: The color.
+    ///   - type: The color code type to use. When the value is `.cssKeyword`, it falls back to `.hex` if the color has no CSS keyword.
+    /// - Returns: The color code in the given type.
+    private func colorCode(for color: NSColor, type: inout ColorCodeType) -> String? {
+        
+        var colorCode = color.colorCode(type: type)
+        
+        if colorCode == nil, type == .cssKeyword {
+            type = .hex
+            colorCode = color.colorCode(type: type)
+        }
         
         // keep letter case
         if ColorCodeType.hexTypes.contains(type), self.colorCode.contains(where: \.isUppercase) {
-            colorCode = colorCode.uppercased()
+            colorCode = colorCode?.uppercased()
         }
         
-        self.colorCode = colorCode
+        return colorCode
     }
 }
 
 
 private extension ColorCodeType {
-    
-    static let hexTypes: [Self] = [.hex, .hexWithAlpha, .shortHex]
-    static let cssTypes: [Self] = [.cssRGB, .cssRGBa, .cssHSL, .cssHSLa, .cssKeyword]
-    
     
     var label: String {
         
@@ -243,6 +266,10 @@ private extension ColorCodeType {
                 String(localized: "ColorCodeType.shortHex.label",
                        defaultValue: "Hexadecimal (Short)",
                        table: "ColorCode")
+            case .shortHexWithAlpha:
+                String(localized: "ColorCodeType.shortHexWithAlpha.label",
+                       defaultValue: "Hexadecimal with Alpha (Short)",
+                       table: "ColorCode")
             case .cssRGB:
                 String(localized: "ColorCodeType.cssRGB.label",
                        defaultValue: "CSS RGB",
@@ -258,6 +285,14 @@ private extension ColorCodeType {
             case .cssHSLa:
                 String(localized: "ColorCodeType.cssHSLa.label",
                        defaultValue: "CSS HSLa",
+                       table: "ColorCode")
+            case .cssHWB:
+                String(localized: "ColorCodeType.cssHWB.label",
+                       defaultValue: "CSS HWB",
+                       table: "ColorCode")
+            case .cssHWBWithAlpha:
+                String(localized: "ColorCodeType.cssHWBWithAlpha.label",
+                       defaultValue: "CSS HWB with Alpha",
                        table: "ColorCode")
             case .cssKeyword:
                 String(localized: "ColorCodeType.cssKeyword.label",

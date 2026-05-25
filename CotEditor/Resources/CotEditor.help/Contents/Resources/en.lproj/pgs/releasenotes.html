@@ -21,6 +21,172 @@
 
 <article headingoffset="1">
 	<header>
+		<h1>CotEditor 7.0.4</h1>
+		<p>release: <time>2026-05-23</time></p>
+	</header>
+
+	<section>
+		<h2>Improvements</h2>
+
+		<ul>
+			<li>Improve VoiceOver support by letting the editor read the text count information shown in the status bar with <kbd>VO</kbd>-<kbd>Shift</kbd>-<kbd>H</kbd>.</li>
+			<li>Improve the paired-symbol matching algorithm for brackets and quotation marks.</li>
+			<li>Remove the Rich Text Format built-in syntax.</li>
+			<li><span class="label">non-AppStore ver.</span>: Update Sparkle from 2.9.1 to 2.9.2.</li>
+		</ul>
+	</section>
+
+
+	<section>
+		<h2>Fixes</h2>
+
+		<ul>
+			<li>Fix an issue where saving a file could drop special POSIX permission bits, such as <code>setuid</code>, <code>setgid</code>, or <code>sticky</code>.</li>
+			<li>Fix an issue where moving the cursor near leading invisible characters could crash the application (Thanks to felix314159!).</li>
+			<li>Fix an issue where copying or moving a file with certain filenames could unexpectedly change the filename while avoiding a conflict.</li>
+			<li>Fix an issue where the incompatible character list in the Warnings inspector could miss some characters that change after text encoding conversion.</li>
+			<li>Fix an issue where block comment delimiters could be inserted at the wrong indentation when commenting out lines with mixed indentation.</li>
+			<li>Fix an issue where NFKC Case-Fold normalization could leave default-ignorable Unicode characters in the text.</li>
+			<li>Fix an issue where invisible character symbols could be drawn incorrectly in right-to-left text.</li>
+			<li>Fix an issue where replacing an existing setting during import could fail for certain files.</li>
+			<li>Fix an issue on macOS 15 where the Export command in the Format settings pane’s menu could fail to export a syntax.</li>
+			<li>Fix typos in German localization (Thanks to Rush Ali!).</li>
+		</ul>
+	</section>
+</article>
+
+
+<article headingoffset="1">
+	<header>
+		<h1>CotEditor 7.0.3</h1>
+		<p>release: <time>2026-05-14</time></p>
+	</header>
+
+	<section>
+		<h2>New Features</h2>
+
+		<ul>
+			<li>Add the Ada syntax.</li>
+		</ul>
+	</section>
+
+
+	<section>
+		<h2>Improvements</h2>
+
+		<ul>
+			<li>Add CSS HWB and 4-digit hexadecimal alpha formats to the Edit Color Code command, and allow it to read modern space-separated CSS RGB/HSL color codes.</li>
+			<li>Support spaces between menu path components in Quick Actions search.</li>
+			<li>Support shebangs with options for syntax detection.</li>
+			<li>Improve line sorting commands to better preserve existing mixed line endings.</li>
+			<li>Limit tree-sitter-based syntax highlighting to 100,000,000 characters to avoid unexpected crashes.</li>
+			<li>Update the Markdown syntax to fix highlighting block quotes.</li>
+			<li>Update the Unicode block name list for the character inspector from Unicode 16.0.0 to Unicode 17.0.0.</li>
+			<li>Update tree-sitter-c to 0.24.2.</li>
+			<li>Update tree-sitter-swift to 0.7.2.</li>
+			<li>Improve overall stability and performance.</li>
+			<li><span class="trivial">trivial</span>: Improve insertion format editors in the Snippet settings pane.</li>
+			<li><span class="trivial">dev</span>: Update the build environment to Xcode 26.5.0.</li>
+		</ul>
+	</section>
+
+
+	<section>
+		<h2>Fixes</h2>
+
+		<ul>
+			<li>Fix an issue where customized built-in syntaxes could be ignored when their file mappings conflicted with other built-in syntaxes.</li>
+			<li>Fix an issue where text near the end of a very large document could fail to appear when hanging indentation was enabled.</li>
+			<li>Fix an issue where text following an emoji tag sequence could be rendered as missing glyphs.</li>
+			<li>Fix an issue where deleting by word or to the beginning of a line could delete text outside the selection.</li>
+			<li>Fix an issue where selecting a word could select an incorrect range.</li>
+			<li>Fix an issue where Sort by Pattern could reorder lines that do not contain the specified sort key.</li>
+			<li>Fix an issue where dropping text clippings or File Drop snippets could insert extra text when their line endings differed from the document’s.</li>
+			<li>Fix an issue where File Drop snippets could omit the domain from dropped web URLs.</li>
+			<li>Fix an issue where the Restore Defaults button in File Drop settings could remain disabled even when the current settings differed from the defaults.</li>
+			<li>Fix an issue where opening multiple documents at once could open them in separate windows even when window tabbing was set to <em>Automatically</em>.</li>
+			<li>Fix an issue where opening multiple documents while an empty untitled document was open could show some documents before replacing the empty document.</li>
+			<li>Fix an issue where canceling or failing to open a document could leave an empty untitled document behind.</li>
+			<li>Fix an issue where text encoding and read-only options in the Open dialog could be unavailable when selecting files together with folders.</li>
+			<li>Fix an issue where syntax-specific snippets and scripts could remain scoped to the previous document after switching documents in the file browser.</li>
+			<li>Fix an issue where the Document inspector could keep showing the previous document path after closing a document in the file browser.</li>
+			<li>Fix an issue where opening the original folder of an alias from the file browser could fail after requesting file access permission.</li>
+			<li>Fix an issue where opening a UTF-16 or UTF-32 document with a BOM using a byte-order-specific encoding could leave the BOM in the document text.</li>
+			<li>Fix an issue where converting a document to a non-UTF-8 encoding with AppleScript’s BOM option could add an invalid UTF-8 BOM.</li>
+			<li>Fix an issue where encoding detection could prioritize a later encoding declaration over the first one found in the document.</li>
+			<li>Fix an issue where custom syntax highlighting could crash when a begin/end regular expression matched zero-length text at the end of the document.</li>
+			<li>Fix an issue where an unterminated begin/end string pattern could prevent later custom syntax highlighting from being applied.</li>
+			<li>Fix an issue where a malformed custom syntax definition with empty delimiters or empty highlight patterns could make syntax highlighting hang.</li>
+			<li>Fix an issue where tree-sitter-based syntax highlighting could become misaligned after editing around consecutive empty lines or a trailing line ending.</li>
+			<li>Fix an issue where importing settings could incorrectly show an error for a custom theme included in the same settings archive.</li>
+			<li>Fix issues in the Color Code window where it could stop updating or insert invalid color codes.</li>
+			<li>Fix an issue where Advanced Character Count could show outdated or incorrect results.</li>
+			<li>Fix an issue where Unicode input could reject or show some valid Unicode code points as invalid.</li>
+			<li>Fix an issue where the incompatible character list in the Warnings inspector could lose its sort order after rescanning the document.</li>
+			<li>Fix an issue where the hidden Close Split Editor button in the navigation bar could remain available when the editor was not split.</li>
+			<li>Fix an issue where sidebar commands could show incorrect states, and the sidebar could reappear after leaving Versions.</li>
+			<li>Fix typos in German (thanks to Rush Ali!) and some other localizations.</li>
+		</ul>
+	</section>
+</article>
+
+
+<article headingoffset="1">
+	<header>
+		<h1>CotEditor 7.0.2</h1>
+		<p>release: <time>2026-04-29</time></p>
+	</header>
+
+	<section>
+		<h2>Improvements</h2>
+
+		<ul>
+			<li>Improve reliability when UNIX scripts process large input or output through pipes.</li>
+			<li>Allow AppleScript encoding conversion to use encodings outside the customized encoding list.</li>
+			<li>Improve responsiveness when performing the Select All Find Matches command in large documents.</li>
+			<li>Close open documents in the file browser when their containing folder is moved to the Trash.</li>
+			<li><span class="trivial">dev</span>: Update the build environment to Xcode 26.4.1.</li>
+		</ul>
+	</section>
+
+
+	<section>
+		<h2>Fixes</h2>
+
+		<ul>
+			<li>Fix an issue in CotEditor 7.0.1 where saving an extensionless document could leave it treated as locked by the system (“<code>com.apple.provenance</code>” extended attribute), preventing later overwrites.</li>
+			<li>Fix an issue where deleting forward with multiple cursors could crash when an insertion point was at the end of the document.</li>
+			<li>Fix an issue where pasting text copied from multiple selections in a CRLF document could insert incorrect text.</li>
+			<li>Fix an issue where the Sort by Pattern command could insert extra blank lines in CRLF documents.</li>
+			<li>Fix an issue where specifying an out-of-range negative line range could crash.</li>
+			<li>Fix an issue where highlights for instances of selected text could reappear after turning the option off.</li>
+			<li>Fix an issue where a failed script could leave its name in subsequent console messages.</li>
+			<li>Fix an issue where print settings specified by AppleScript could be ignored.</li>
+			<li>Fix an issue where edits in the Multiple Replace window could be lost after immediately selecting, renaming, or deleting definitions.</li>
+			<li>Fix an issue where Replace All and Multiple Replace could fail to apply replacements between Unicode-equivalent strings, such as “·” (<code>U+00B7</code>) and “·” (<code>U+0387</code>).</li>
+			<li>Fix an issue where performing Find All or Highlight All in a read-only document could make the document editable.</li>
+			<li>Fix an issue where regular expression search could get stuck at the same position when matching zero-length text.</li>
+			<li>Fix an issue where regular expression syntax highlighting could be applied incorrectly.</li>
+			<li>Fix an issue where custom keyboard shortcuts using the <kbd>Forward Delete</kbd> key could not work.</li>
+			<li>Fix an issue where document open/save scripts could fail to run immediately after launch or script folder changes.</li>
+			<li>Fix an issue where the default text encoding could be removed from the Encoding List.</li>
+			<li>Fix an issue where detecting encoding-incompatible characters could miss Unicode-normalized text changes.</li>
+			<li>Fix an issue where syntax definition files with reserved names could be imported and appear as unusable custom syntaxes.</li>
+			<li>Fix an issue where changes to Mode settings might not take effect immediately.</li>
+			<li>Fix an issue where changing the document appearance or deleting a custom theme could leave the theme editor in the Appearance settings pane showing an outdated theme.</li>
+			<li>Fix an issue in the file browser where renaming an item while filtering could show stale results or crash.</li>
+			<li>Fix an issue in the file browser where moving both a folder and its contained items to the Trash at the same time could show an incorrect confirmation or unnecessary error.</li>
+			<li>Fix an issue in the file browser where old filter results could be shown after changing the filter text quickly.</li>
+			<li><span class="trivial">trivial</span>: Fix an issue where the Multiple Replace window could keep showing the previous definition after failing to load another definition.</li>
+			<li><span class="trivial">trivial</span>: Fix an issue where key bindings equivalent to the default shortcuts could remain stored as custom settings.</li>
+			<li><span class="trivial">trivial</span>: Fix an issue in the syntax editor where incomplete block comment delimiters could be saved.</li>
+		</ul>
+	</section>
+</article>
+
+
+<article headingoffset="1">
+	<header>
 		<h1>CotEditor 7.0.1</h1>
 		<p>release: <time>2026-04-26</time></p>
 	</header>
@@ -586,7 +752,7 @@
 		<h2>Improvements</h2>
 
 		<ul>
-			<li>Avoid assigning the <kbd>Shift</kbd>+<kbd>Return</kbd> shortcut key for a snippet.</li>
+			<li>Avoid assigning the <kbd>Shift</kbd>-<kbd>Return</kbd> shortcut key for a snippet.</li>
 			<li><span class="trivial">trivial</span>: Update find result messages.</li>
 			<li><span class="trivial">dev</span>: Update the build environment to Xcode 26.0.</li>
 			<li><span class="label">non-AppStore ver.</span>: Update Sparkle from 2.8.0-beta.3 to 2.8.0.</li>
@@ -3333,7 +3499,7 @@
 
 		<ul>
 			<li>Fix an issue that File Drop settings were not saved if both the extensions and syntax styles are for “all.”</li>
-			<li>Fix an issue that shortcuts for snippets did not accept the Shift key with a non-letter character, such as Shift + Return.</li>
+			<li>Fix an issue that shortcuts for snippets did not accept the Shift key with a non-letter character, such as Shift-Return.</li>
 			<li>Fix an issue that the rainbow cursor appeared when the document has a large number of incompatible characters.</li>
 			<li>Fix an issue that the rainbow cursor appeared when expanding the selection by <kbd>⌥⇧←</kbd> shortcut and invisible characters are contained in the new selection.</li>
 			<li>Fix an issue that the writing direction could be changed to right to left although when the text orientation is vertical.</li>
@@ -4452,7 +4618,7 @@
 
 <ul>
 	<li>Keep last opacity state of restored document windows.</li>
-	<li>Update behavior of Opt+Arrow shortcut series.</li>
+	<li>Update behavior of Opt-Arrow shortcut series.</li>
 </ul>
 </section>
 
@@ -4496,7 +4662,7 @@
 	<li>Add “Hide extension” option to the Save dialog.</li>
 	<li>Use the system appearance in the input candidate window even when the theme has a dark background color.</li>
 	<li>Give some feedback about the search result in VoiceOver.</li>
-	<li>Improve the behavior of Opt+Arrow shortcut series to stop the by punctuation marks, such as <code>.</code> and <code>:</code>.</li>
+	<li>Improve the behavior of Opt-Arrow shortcut series to stop the by punctuation marks, such as <code>.</code> and <code>:</code>.</li>
 	<li>Hide unused items in the font panel toolbar.</li>
 	<li>Optimize the performance of finding the matching brace to highlight.</li>
 	<li>Optimize the performance of line number drawing.</li>
@@ -5082,7 +5248,7 @@
 <ul>
 	<li>Assign <kbd>⌘⇧[</kbd> shortcut to “Show Next Tab” command instead of “Surround Selection with Brackets” command.</li>
 	<li>Treat a logical line, which is delimited by line ending characters, as one line in VoiceOver, instead of a visual (wrapped) line.<ul>
-		<li>Thereby, users can now also know the current line number by pressing VoiceOver shortcut VO+F3.</li>
+		<li>Thereby, users can now also know the current line number by pressing VoiceOver shortcut VO-F3.</li>
 	</ul></li>
 	<li>Improve the accessibility of user interface elements with VoiceOver.</li>
 	<li>Avoid performing custom sort with an invalid parameter.</li>
@@ -5521,7 +5687,7 @@
 <ul>
 	<li>Replace matches with preset replacement definition (Find &gt; Multiple Replace).</li>
 	<li>Add outline menu to side bar.</li>
-	<li>Select tabbed window with <code>⌘+number</code>.</li>
+	<li>Select tabbed window with <code>⌘-number</code>.</li>
 	<li>Parse regular expression pattern in find string field in regular expression mode:<ul>
 		<li>Syntax highlight.</li>
 		<li>Highlight matching brace by moving cursor.</li>
@@ -5854,7 +6020,7 @@
 <ul>
 	<li>Fix an issue where the find panel was over expanded when performing “Find All” with a long find string.</li>
 	<li>Fix an issue where the file size in the status bar was not updated after saving.</li>
-	<li>Fix an issue where the find panel didn’t select the previous field with Shift + Tab keys.</li>
+	<li>Fix an issue where the find panel didn’t select the previous field with Shift-Tab keys.</li>
 	<li>Fix an issue where the application frozen by opening the File Mapping Conflicts list when filename conflict exists.</li>
 </ul>
 </section>
@@ -6564,7 +6730,7 @@
 	<li>Fix an issue where status bar layout collapsed if status line overflows.</li>
 	<li>Fix an issue where document theme reloaded unnecessarily on the first time Appearance pane display.</li>
 	<li>Fix an issue where the application could crash when script was failed.</li>
-	<li>Fix an issue where scrolling to the end of document with <kbd>⌘</kbd>+<kbd>↓</kbd> shortcut didn’t scroll to the end.</li>
+	<li>Fix an issue where scrolling to the end of document with <kbd>⌘</kbd>-<kbd>↓</kbd> shortcut didn’t scroll to the end.</li>
 	<li>Improve general stability.</li>
 </ul>
 </section>
@@ -8662,7 +8828,7 @@
 
 <ul>
 	<li>“Inspect Glyph” feature:<ul>
-		<li>Popover information of the selected character, if <kbd>Cmd</kbd> + <kbd>Option</kbd> + <kbd>I</kbd> is pressed or “Inspect Glyph” menu item in “Edit” menu is selected when exactly a single character is selected.</li>
+		<li>Popover information of the selected character, if <kbd>Cmd</kbd>-<kbd>Option</kbd>-<kbd>I</kbd> is pressed or “Inspect Glyph” menu item in “Edit” menu is selected when exactly a single character is selected.</li>
 	</ul></li>
 	<li>New color code panel:<ul>
 		<li>Support 3-digit Hex, CSS’s rgb(), rgba(), hsl() and hsla().</li>
@@ -8967,7 +9133,7 @@
 <section>
 <h2>Improvements</h2>
 <ul>
-	<li>On Find Panel, don’t close panel when you press return key. (If you’d like to close panel, press shift+return key.) (thanks to akinull-san)</li>
+	<li>On Find Panel, don’t close panel when you press return key. (If you’d like to close panel, press Shift-Return key.) (thanks to akinull-san)</li>
 	<li>Add binary for 10.7. (build separately for 10.4–10.6 and for 10.7)</li>
 </ul>
 </section>
@@ -9001,7 +9167,7 @@
 <h2>Fixes</h2>
 <ul>
 	<li>Fix a bug that ignores tab in auto indent.</li>
-	<li>Fix a bug that cannot open AppleScript Editor for 10.6 by Option+Click on script menu.</li>
+	<li>Fix a bug that cannot open AppleScript Editor for 10.6 by Option-Click on script menu.</li>
 </ul>
 </section>
 </article>

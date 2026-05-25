@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2017-2025 1024jp
+//  © 2017-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -33,8 +33,11 @@ struct MultipleReplaceSplitView: View {
     private let manager: ReplacementManager = .shared
     
     @AppStorage(.selectedMultipleReplaceSettingName) private var selection: String?
+    @State private var settingName: String?
     @State private var setting: MultipleReplace = .init()
     @State private var error: (any Error)?
+    
+    @State private var settingUpdateObserver: NotificationCenter.ObservationToken?
     
     
     var body: some View {
@@ -44,37 +47,45 @@ struct MultipleReplaceSplitView: View {
                 .environment(\.sidebarRowSize, .medium)
                 .navigationSplitViewColumnWidth(min: 80, ideal: 200)
         } detail: {
-            MultipleReplaceView(setting: $setting) {
-                self.setting = $0
-                self.saveSetting()
+            MultipleReplaceView(settingName: self.settingName, setting: $setting) { name, setting in
+                if name == self.settingName {
+                    self.setting = setting
+                }
+                self.save(setting: setting, name: name)
             }
         }
         .onChange(of: self.selection, initial: true) { _, newValue in
-            guard let newValue else { return }
+            guard let newValue else {
+                self.settingName = nil
+                self.setting = .init()
+                return
+            }
             self.changeSetting(to: newValue)
         }
-        .task {
-            let names = NotificationCenter.default
-                .notifications(named: .didUpdateSettingNotification, object: self.manager)
-                .compactMap { $0.userInfo?["change"] as? SettingChange }
-                .compactMap(\.new)
-            
-            for await name in names where name == self.selection {
+        .onAppear {
+            self.settingUpdateObserver = NotificationCenter.default.addObserver(of: self.manager, for: DidManagerUpdateSettingMessage.self) { message in
+                guard let name = message.change.new, name == self.selection else { return }
                 self.changeSetting(to: name)
             }
         }
+        .onDisappear {
+            self.settingUpdateObserver = nil
+        }
+        .alert(error: $error)
     }
     
     
     // MARK: Private Methods
     
-    /// Saves the current setting as the current selected name.
-    private func saveSetting() {
-        
-        guard let name = self.selection else { return }
+    /// Saves the given setting as the passed-in name.
+    ///
+    /// - Parameters:
+    ///   - setting: The setting to save.
+    ///   - name: The name under which to save the setting.
+    private func save(setting: MultipleReplace, name: String) {
         
         do {
-            try self.manager.save(setting: self.setting, name: name)
+            try self.manager.save(setting: setting, name: name)
         } catch {
             Logger.app.error("\(error.localizedDescription)")
         }
@@ -86,10 +97,20 @@ struct MultipleReplaceSplitView: View {
     /// - Parameter name: The name of the setting.
     private func changeSetting(to name: String) {
         
+        let setting: MultipleReplace
         do {
-            self.setting = try self.manager.setting(name: name)
+            setting = try self.manager.setting(name: name)
         } catch {
+            self.settingName = nil
+            self.setting = .init()
             self.error = error
+            return
         }
+        
+        guard name != self.settingName || setting != self.setting else { return }
+        
+        self.settingName = name
+        self.setting = setting
+        self.error = nil
     }
 }

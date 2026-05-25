@@ -39,7 +39,12 @@ import StringUtils
     // MARK: Private Properties
     
     private weak var textView: NSTextView?
+    private var hasSelection = false
+    
+    private var editorObservers: Set<NotificationCenter.ObservationToken> = []
     private var observers: Set<AnyCancellable> = []
+    private var entireCountTask: Task<Void, any Error>?
+    private var selectionCountTask: Task<Void, any Error>?
     
     
     // MARK: Public Methods
@@ -47,7 +52,7 @@ import StringUtils
     /// If there is a selection returns the count of the selection; otherwise, the entire count.
     var count: Int? {
         
-        ((self.selectionCount ?? 0) > 0) ? self.selectionCount : self.entireCount
+        self.hasSelection ? self.selectionCount : self.entireCount
     }
     
     
@@ -55,24 +60,32 @@ import StringUtils
     func stopObservation() {
         
         self.observers.removeAll()
+        self.entireCountTask?.cancel()
+        self.entireCountTask = nil
+        self.selectionCountTask?.cancel()
+        self.selectionCountTask = nil
     }
     
     
     /// Observe the content and selection of the given text view to count.
     ///
     /// - Parameter textView: The text view to observe.
-    func observe(textView: NSTextView) {
+    func observe(textView: EditorTextView) {
         
         self.textView = textView
         
         self.countEntire()
         self.countSelection()
         
+        self.editorObservers = [
+            NotificationCenter.default.addObserver(of: textView, for: .didLiveChangeSelection) { [weak self] _ in
+                self?.countSelection()
+            },
+        ]
+        
         self.observers = [
             NotificationCenter.default.publisher(for: NSText.didChangeNotification, object: textView)
                 .sink { [unowned self] _ in self.countEntire() },
-            NotificationCenter.default.publisher(for: EditorTextView.DidLiveChangeSelectionMessage.name, object: textView)
-                .sink { [unowned self] _ in self.countSelection() },
             Publishers.Merge7(UserDefaults.standard.publisher(for: .countUnit).map { _ in },
                               UserDefaults.standard.publisher(for: .countNormalizationForm).map { _ in },
                               UserDefaults.standard.publisher(for: .countNormalizes).map { _ in },
@@ -89,17 +102,25 @@ import StringUtils
     }
     
     
+    // MARK: Private Methods
+    
     /// Counts the entire string in the text view.
     private func countEntire() {
         
-        guard let string = self.textView?.string.immutable else { return }
+        self.entireCountTask?.cancel()
+        
+        guard let string = self.textView?.string.immutable else {
+            self.entireCountTask = nil
+            return
+        }
         
         let options = UserDefaults.standard.characterCountOptions
-        
-        Task {
-            self.entireCount = await Task.detached {
-                string.count(options: options)
-            }.value
+        self.entireCountTask = Task { [weak self] in
+            try Task.checkCancellation()
+            let count = await Self.calculateCount(in: string, options: options)
+            try Task.checkCancellation()
+            
+            self?.entireCount = count
         }
     }
     
@@ -107,17 +128,55 @@ import StringUtils
     /// Counts the selected strings in the text view.
     private func countSelection() {
         
-        guard let strings = self.textView?.selectedStrings else { return }
+        self.selectionCountTask?.cancel()
         
-        let options = UserDefaults.standard.characterCountOptions
-        
-        Task {
-            self.selectionCount = await Task.detached {
-                strings
-                    .compactMap { $0.count(options: options) }
-                    .reduce(0, +)
-            }.value
+        guard let textView = self.textView else {
+            self.selectionCountTask = nil
+            return
         }
+        
+        self.hasSelection = textView.selectedRanges.contains { $0.rangeValue.length > 0 }
+        
+        let strings = textView.selectedStrings
+        let options = UserDefaults.standard.characterCountOptions
+        self.selectionCountTask = Task { [weak self] in
+            try Task.checkCancellation()
+            let count = await Self.calculateCount(in: strings, options: options)
+            try Task.checkCancellation()
+            
+            self?.selectionCount = count
+        }
+    }
+    
+    
+    /// Calculates the count of a string off the main actor.
+    ///
+    /// - Parameters:
+    ///   - string: The string to count.
+    ///   - options: The counting options.
+    /// - Returns: The count, or `nil` if counting failed.
+    @concurrent private static func calculateCount(in string: String, options: CharacterCountOptions) async -> Int? {
+        
+        string.count(options: options)
+    }
+    
+    
+    /// Calculates the total count of the selected strings off the main actor.
+    ///
+    /// - Parameters:
+    ///   - strings: The selected strings to count.
+    ///   - options: The counting options.
+    /// - Returns: The total count, or `nil` if counting failed.
+    @concurrent private static func calculateCount(in strings: [String], options: CharacterCountOptions) async -> Int? {
+        
+        var count = 0
+        for string in strings {
+            guard let stringCount = string.count(options: options) else { return nil }
+            
+            count += stringCount
+        }
+        
+        return count
     }
 }
 
@@ -133,5 +192,15 @@ private extension UserDefaults {
             ignoresWhitespaces: self[.countIgnoresWhitespaces],
             treatsConsecutiveWhitespaceAsSingle: self[.countTreatsConsecutiveWhitespaceAsSingle],
             encoding: .init(rawValue: UInt(self[.countEncoding])))
+    }
+}
+
+
+private extension Publisher {
+    
+    /// Wraps this publisher with a type eraser.
+    func eraseToVoid() -> AnyPublisher<Void, Failure> {
+        
+        self.map { _ in () }.eraseToAnyPublisher()
     }
 }

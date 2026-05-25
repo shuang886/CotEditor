@@ -39,7 +39,7 @@ struct TreeSitterClientContentTests {
         content.reset("ab\ncd")
         
         #expect(content.string == "ab\ncd")
-        #expect(content.lineStarts == IndexSet([0, 3]))
+        #expect(content.lineStarts == [0, 3])
     }
     
     
@@ -52,7 +52,7 @@ struct TreeSitterClientContentTests {
                                          insertedText: "XYZ")
         
         #expect(content.string == "abXYZ\ndef")
-        #expect(content.lineStarts == IndexSet([0, 6]))
+        #expect(content.lineStarts == [0, 6])
         
         #expect(edit.startByte == 4)
         #expect(edit.oldEndByte == 6)
@@ -75,7 +75,7 @@ struct TreeSitterClientContentTests {
                                          insertedText: "")
         
         #expect(content.string == "abcd")
-        #expect(content.lineStarts == IndexSet([0]))
+        #expect(content.lineStarts == [0])
         
         #expect(edit.startByte == 4)
         #expect(edit.oldEndByte == 6)
@@ -85,6 +85,98 @@ struct TreeSitterClientContentTests {
         #expect(edit.oldEndPoint.row == 1)
         #expect(edit.oldEndPoint.column == 0)
         #expect(edit.newEndPoint.row == 0)
+        #expect(edit.newEndPoint.column == 2)
+    }
+    
+    
+    @Test func applyEditJoinsCRLFWithInsertedLF() throws {
+        
+        var content = TreeSitterClient.Content("a\rb")
+        
+        _ = try content.applyEdit(editedRange: NSRange(location: 2, length: 1),
+                                  delta: 1,
+                                  insertedText: "\n")
+        
+        #expect(content.string == "a\r\nb")
+        #expect(content.lineStarts == [0, 3])
+    }
+    
+    
+    @Test func applyEditJoinsCRLFWithInsertedCR() throws {
+        
+        var content = TreeSitterClient.Content("a\nb")
+        
+        _ = try content.applyEdit(editedRange: NSRange(location: 1, length: 1),
+                                  delta: 1,
+                                  insertedText: "\r")
+        
+        #expect(content.string == "a\r\nb")
+        #expect(content.lineStarts == [0, 3])
+    }
+    
+    
+    @Test func applyEditBreaksCRLFByDeletingLF() throws {
+        
+        var content = TreeSitterClient.Content("a\r\nb")
+        
+        _ = try content.applyEdit(editedRange: NSRange(location: 2, length: 0),
+                                  delta: -1,
+                                  insertedText: "")
+        
+        #expect(content.string == "a\rb")
+        #expect(content.lineStarts == [0, 2])
+    }
+    
+    
+    @Test func applyEditJoinsCRLFByDeletingSeparator() throws {
+        
+        var content = TreeSitterClient.Content("a\rx\nb")
+        
+        _ = try content.applyEdit(editedRange: NSRange(location: 2, length: 0),
+                                  delta: -1,
+                                  insertedText: "")
+        
+        #expect(content.string == "a\r\nb")
+        #expect(content.lineStarts == [0, 3])
+    }
+    
+    
+    @Test func applyEditCalculatesPointAfterConsecutiveNewlines() throws {
+        
+        var content = TreeSitterClient.Content("\n\nx")
+        
+        let edit = try content.applyEdit(editedRange: NSRange(location: 1, length: 2),
+                                         delta: 1,
+                                         insertedText: "a\n")
+        
+        #expect(content.string == "\na\nx")
+        #expect(content.lineStarts == [0, 1, 3])
+        
+        #expect(edit.startPoint.row == 1)
+        #expect(edit.startPoint.column == 0)
+        #expect(edit.oldEndPoint.row == 2)
+        #expect(edit.oldEndPoint.column == 0)
+        #expect(edit.newEndPoint.row == 2)
+        #expect(edit.newEndPoint.column == 0)
+    }
+    
+    
+    @Test func applyEditCalculatesPointAfterTrailingNewline() throws {
+        
+        var content = TreeSitterClient.Content("a\n")
+        
+        let edit = try content.applyEdit(editedRange: NSRange(location: 2, length: 2),
+                                         delta: 2,
+                                         insertedText: "bc")
+        
+        #expect(content.string == "a\nbc")
+        #expect(content.lineStarts == [0, 2])
+        
+        #expect(edit.startPoint.row == 1)
+        #expect(edit.startPoint.column == 0)
+        #expect(edit.oldEndPoint.row == 1)
+        #expect(edit.oldEndPoint.column == 0)
+        #expect(edit.newEndPoint.row == 1)
         #expect(edit.newEndPoint.column == 2)
     }
     
@@ -110,5 +202,87 @@ struct TreeSitterClientContentTests {
                                   delta: 0,
                                   insertedText: "")
         }
+    }
+    
+    
+    @Test func applyEditThrowsForNegativeRangeLocation() {
+        
+        var content = TreeSitterClient.Content("abc")
+        
+        #expect(throws: TreeSitterClient.Content.EditError.invalidRange) {
+            try content.applyEdit(editedRange: NSRange(location: -1, length: 0),
+                                  delta: 0,
+                                  insertedText: "")
+        }
+    }
+    
+    
+    @Test func applyEditInsertsMultilineText() throws {
+        
+        var content = TreeSitterClient.Content("abc")
+        
+        let edit = try content.applyEdit(editedRange: NSRange(location: 1, length: 4),
+                                         delta: 4,
+                                         insertedText: "x\ny\n")
+        
+        #expect(content.string == "ax\ny\nbc")
+        #expect(content.lineStarts == [0, 3, 5])
+        
+        #expect(edit.startPoint.row == 0)
+        #expect(edit.startPoint.column == 1)
+        #expect(edit.newEndPoint.row == 2)
+        #expect(edit.newEndPoint.column == 0)
+    }
+    
+    
+    @Test func applyEditInsertsTextContainingCRLF() throws {
+        
+        var content = TreeSitterClient.Content("abc")
+        
+        _ = try content.applyEdit(editedRange: NSRange(location: 1, length: 4),
+                                  delta: 4,
+                                  insertedText: "x\r\ny")
+        
+        #expect(content.string == "ax\r\nybc")
+        #expect(content.lineStarts == [0, 4])
+    }
+    
+    
+    @Test func applyEditUpdatesLineStartsAcrossMixedLineEndings() throws {
+        
+        var content = TreeSitterClient.Content("a\nb\r\nc")
+        
+        _ = try content.applyEdit(editedRange: NSRange(location: 0, length: 2),
+                                  delta: 2,
+                                  insertedText: "XY")
+        
+        #expect(content.string == "XYa\nb\r\nc")
+        #expect(content.lineStarts == [0, 4, 7])
+    }
+    
+    
+    @Test func applyEditFormsCRLFAtTrailingEdgeOfInsertion() throws {
+        
+        var content = TreeSitterClient.Content("a\nb")
+        
+        _ = try content.applyEdit(editedRange: NSRange(location: 1, length: 2),
+                                  delta: 2,
+                                  insertedText: "x\r")
+        
+        #expect(content.string == "ax\r\nb")
+        #expect(content.lineStarts == [0, 4])
+    }
+    
+    
+    @Test func applyEditFormsCRLFAtLeadingEdgeOfInsertion() throws {
+        
+        var content = TreeSitterClient.Content("a\rb")
+        
+        _ = try content.applyEdit(editedRange: NSRange(location: 2, length: 2),
+                                  delta: 2,
+                                  insertedText: "\nx")
+        
+        #expect(content.string == "a\r\nxb")
+        #expect(content.lineStarts == [0, 3])
     }
 }

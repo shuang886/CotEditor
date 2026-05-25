@@ -6,7 +6,7 @@ permissions:
   contents: read
 
 env:
-  XCODE_VERSION: "26.4"
+  XCODE_VERSION: "26.5"
 
 jobs:
   packages:
@@ -31,7 +31,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v5
     - name: Cache SwiftPM build products
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: Packages/${{ matrix.package }}/.build
         key: ${{ runner.os }}-${{ runner.arch }}-xcode-${{ env.XCODE_VERSION }}-spm-${{ matrix.package }}-${{ hashFiles(format('Packages/{0}/Package.swift', matrix.package), format('Packages/{0}/Package.resolved', matrix.package)) }}
@@ -57,13 +57,13 @@ jobs:
       uses: actions/checkout@v5
     - name: Unit Test for CotEditor
       run: |
-        xcodebuild test -scheme CotEditor CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO -skipPackagePluginValidation
+        xcodebuild test -scheme CotEditor CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= CODE_SIGN_ENTITLEMENTS_SUFFIX=-AdHoc -skipPackagePluginValidation
     - name: Release Build Smoke Test
       run: |
         set -euo pipefail
         app_binary="/tmp/CotEditorInstall/Applications/CotEditor.app/Contents/MacOS/CotEditor"
         rm -rf /tmp/CotEditorInstall
-        xcodebuild install -scheme CotEditor -configuration Release DSTROOT=/tmp/CotEditorInstall CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation
+        xcodebuild install -scheme CotEditor -configuration Release DSTROOT=/tmp/CotEditorInstall CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= CODE_SIGN_ENTITLEMENTS_SUFFIX=-AdHoc -skipPackagePluginValidation
         "${app_binary}" >/dev/null 2>&1 &
         app_pid=$!
         sleep 5

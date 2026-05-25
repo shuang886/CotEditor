@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2018-2024 1024jp
+//  © 2018-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -42,7 +42,12 @@ extension NSFont {
     
     
     /// Returns the font used for line number views, in the specified size.
-    static func lineNumberFont(ofSize size: CGFloat = 0, weight: NSFont.Weight = .regular) -> sending NSFont {
+    ///
+    /// - Parameters:
+    ///   - size: The font size.
+    ///   - weight: The font weight.
+    /// - Returns: The line number font.
+    static func lineNumberFont(ofSize size: CGFloat = 0, weight: NSFont.Weight = .regular) -> NSFont {
         
         NSFont(named: .avenirNextCondensed, weight: weight, size: size)
             ?? .monospacedDigitSystemFont(ofSize: size, weight: weight)

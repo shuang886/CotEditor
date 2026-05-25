@@ -25,7 +25,6 @@
 //
 
 import Foundation
-import Combine
 import Synchronization
 import UniformTypeIdentifiers
 import Defaults
@@ -40,7 +39,7 @@ enum SyntaxName {
 }
 
 
-@MainActor final class SyntaxManager: SettingFileManaging {
+@MainActor @Observable final class SyntaxManager: SettingFileManaging {
     
     typealias Setting = Syntax
     
@@ -58,7 +57,7 @@ enum SyntaxName {
     let reservedNames: [String] = [SyntaxName.none, "General", "Code"] + TreeSitterSyntax.aliasedSyntaxes.map(\.rawValue)
     
     let bundledSettingNames: [String]
-    @Published var settingNames: [String] = []
+    var settingNames: [String] = []
     
     var cachedSettings: [String: Setting] {
         
@@ -103,6 +102,13 @@ enum SyntaxName {
             filenames: table.filenames.filter { $0.value.count > 1 },
             interpreters: table.interpreters.filter { $0.value.count > 1 }
         )
+    }
+    
+    
+    /// A snapshot of the syntax file mapping table.
+    nonisolated var fileMappingTable: SyntaxMappingTable {
+        
+        self.mappingTable.withLock(\.self)
     }
     
     
@@ -227,6 +233,8 @@ enum SyntaxName {
     // MARK: Setting File Managing
     
     /// Builds the list of available settings by considering both user and bundled settings.
+    ///
+    /// - Returns: Available setting names.
     nonisolated func listAvailableSettings() -> [String] {
         
         let userSettingNames = self.userSettingFileURLs
@@ -240,6 +248,7 @@ enum SyntaxName {
             UserDefaults.standard.restore(key: .syntax)
         }
         UserDefaults.standard[.recentSyntaxNames].removeAll { !settingNames.contains($0) }
+        UserDefaults.standard[.hiddenSyntaxes].removeAll { !settingNames.contains($0) }
         
         return settingNames
     }
@@ -251,6 +260,27 @@ enum SyntaxName {
     ///   - change: The change to report.
     func didUpdateSetting(change: SettingChange) {
         
+        switch change {
+            case .updated(from: let oldName, to: let newName):
+                guard
+                    oldName != newName,
+                    UserDefaults.standard[.hiddenSyntaxes].contains(oldName)
+                else { break }
+                
+                var hiddenSyntaxes = Set(UserDefaults.standard[.hiddenSyntaxes])
+                hiddenSyntaxes.remove(oldName)
+                hiddenSyntaxes.insert(newName)
+                UserDefaults.standard[.hiddenSyntaxes] = hiddenSyntaxes.sorted()
+                
+            case .removed(let name):
+                guard UserDefaults.standard[.hiddenSyntaxes].contains(name) else { break }
+                
+                UserDefaults.standard[.hiddenSyntaxes].removeAll { $0 == name }
+                
+            case .added:
+                break
+        }
+        
         self.updateMappingTable()
     }
     
@@ -260,11 +290,15 @@ enum SyntaxName {
     /// Updates the file mapping table used for syntax detection.
     private func updateMappingTable() {
         
-        // defer bundled syntaxes so user syntaxes take precedence
-        let settingNames = self.settingNames.filter { !self.bundledSettingNames.contains($0) } + self.bundledSettingNames
+        let userSettingFileURLs = self.userSettingFileURLs
+        let userSettingNames = Set(userSettingFileURLs.map(Self.settingName(from:)))
+        
+        // defer bundled syntaxes so user-customized syntaxes take precedence
+        let settingNames = self.settingNames.filter(userSettingNames.contains)
+            + self.bundledSettingNames.filter { !userSettingNames.contains($0) }
         
         // load mapping definitions from syntax files in the user domain
-        let userMaps = try! Syntax.FileMap.load(at: self.userSettingFileURLs, ignoresInvalidData: true)
+        let userMaps = try! Syntax.FileMap.load(at: userSettingFileURLs, ignoresInvalidData: true)
         let maps = self.bundledMaps.merging(userMaps) { _, new in new }
         
         let mappingTable = SyntaxMappingTable(syntaxNames: settingNames, maps: maps)

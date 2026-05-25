@@ -30,24 +30,26 @@ import Testing
     
     @Test func debounce() async throws {
         
-        let delay: ContinuousClock.Duration = .seconds(0.2)
-        try await confirmation("Debouncer executed", expectedCount: 1) { confirm in
-            let debouncer = Debouncer(delay: delay) {
-                confirm()
-            }
-            
-            debouncer.schedule()
-            try await Task.sleep(for: .seconds(0.1))
-            debouncer.schedule()
-            
-            try await Task.sleep(for: delay + .seconds(0.2))
+        let delay: ContinuousClock.Duration = .milliseconds(20)
+        var count = 0
+        let debouncer = Debouncer(delay: delay) {
+            count += 1
         }
+        
+        debouncer.schedule()
+        debouncer.schedule()
+        
+        let didRun = await self.waitFor { count > 0 }
+        try #require(didRun, "The action must be debounced and executed.")
+        try await Task.sleep(for: delay + .milliseconds(50))
+        #expect(count == 1, "Repeated scheduling must execute only the latest action.")
     }
     
     
     @Test func rescheduleFromAction() async throws {
         
-        let delay: ContinuousClock.Duration = .seconds(0.2)
+        let delay: ContinuousClock.Duration = .milliseconds(10)
+        let rescheduledDelay: ContinuousClock.Duration = .milliseconds(50)
         var count = 0
         var didReschedule = false
         let box = DebouncerBox()
@@ -56,19 +58,19 @@ import Testing
             if count == 1 {
                 guard let debouncer = box.debouncer else { return }
                 
-                debouncer.schedule()
+                debouncer.schedule(delay: rescheduledDelay)
                 didReschedule = true
             }
         }
         box.debouncer = debouncer
         
         debouncer.schedule()
-        try await Task.sleep(for: delay + .seconds(0.1))
-        #expect(didReschedule, "The action must reschedule itself.")
+        let didRescheduleFromAction = await self.waitFor { didReschedule }
+        try #require(didRescheduleFromAction, "The action must reschedule itself.")
         #expect(count == 1, "The action can reschedule itself.")
         
         debouncer.cancel()
-        try await Task.sleep(for: delay + .seconds(0.1))
+        try await Task.sleep(for: rescheduledDelay + .milliseconds(20))
         #expect(count == 1, "The rescheduled action must remain cancellable.")
     }
     
@@ -92,14 +94,14 @@ import Testing
         debouncer.fire()
         #expect(value == 1, "The scheduled action must be performed immediately.")
         
-        try await Task.sleep(for: .seconds(0.1))
+        await Task.yield()
         #expect(value == 1, "The scheduled task must be canceled after immediate firing.")
     }
     
     
     @Test func cancel() async throws {
         
-        let delay: ContinuousClock.Duration = .seconds(0.2)
+        let delay: ContinuousClock.Duration = .milliseconds(10)
         try await confirmation("Debouncer cancelled", expectedCount: 0) { confirm in
             let debouncer = Debouncer(delay: delay) {
                 confirm()
@@ -108,8 +110,24 @@ import Testing
             debouncer.schedule()
             debouncer.cancel()
             
-            try await Task.sleep(for: delay + .seconds(0.2))
+            try await Task.sleep(for: delay + .milliseconds(20))
         }
+    }
+    
+    
+    // MARK: Private Methods
+    
+    private func waitFor(timeout: Duration = .seconds(5), interval: Duration = .milliseconds(10), _ condition: @escaping () -> Bool) async -> Bool {
+        
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        
+        while clock.now < deadline {
+            if condition() { return true }
+            try? await Task.sleep(for: interval)
+        }
+        
+        return condition()
     }
 }
 

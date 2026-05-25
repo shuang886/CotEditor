@@ -236,14 +236,14 @@ extension Document {
         guard
             let arguments = command.evaluatedArguments,
             let encodingName = arguments["newEncoding"] as? String,
-            let encoding = EncodingManager.shared.encoding(name: encodingName) ?? EncodingManager.shared.encoding(ianaCharSetName: encodingName)
+            let encoding = EncodingManager.encoding(name: encodingName) ?? EncodingManager.encoding(ianaCharSetName: encodingName)
         else {
             command.scriptErrorNumber = OSAParameterMismatch
             command.scriptErrorString = "Invalid encoding name."
             return false
         }
         
-        let withBOM = arguments["BOM"] as? Bool ?? false
+        let withBOM = (encoding == .utf8) && (arguments["BOM"] as? Bool ?? false)
         let fileEncoding = FileEncoding(encoding: encoding, withUTF8BOM: withBOM)
         
         guard fileEncoding != self.fileEncoding else { return true }
@@ -273,7 +273,7 @@ extension Document {
         guard
             let arguments = command.evaluatedArguments,
             let encodingName = arguments["newEncoding"] as? String,
-            let encoding = EncodingManager.shared.encoding(name: encodingName) ?? EncodingManager.shared.encoding(ianaCharSetName: encodingName)
+            let encoding = EncodingManager.encoding(name: encodingName) ?? EncodingManager.encoding(ianaCharSetName: encodingName)
         else {
             command.scriptErrorNumber = OSAParameterMismatch
             command.scriptErrorString = "Invalid encoding name."
@@ -479,15 +479,12 @@ extension Document {
             return
         }
         
-        Task.detached { [weak self] in
-            for await _ in NotificationCenter.default.notifications(named: EditorTextView.DidBecomeFirstResponderMessage.name).map(\.name) {
-                guard let viewController = await self?.viewController else { return }
-                
-                await MainActor.run {
-                    viewController.apply(scriptingProperty: property)
-                }
-                break
-            }
+        var observer: NotificationCenter.ObservationToken?
+        observer = NotificationCenter.default.addObserver(for: EditorTextView.DidBecomeFirstResponderMessage.self) { [weak self] _ in
+            guard let observer, let viewController = self?.viewController else { return }
+            
+            viewController.apply(scriptingProperty: property)
+            NotificationCenter.default.removeObserver(observer)
         }
     }
 }

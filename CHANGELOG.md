@@ -1,28 +1,183 @@
 # Change Log
 
-7.0.2 (unreleased)
+7.1.0 (unreleased)
 --------------------------
+
+### Compatibility Changes
+
+- Change the system requirement to __macOS Tahoe 26 and later__.
+
+
+### New Features
+
+- Add folder search to the sidebar for searching text across files in an opened folder.
+- Add document history navigation to the toolbar for folder documents.
+- Add the Customize Syntax Menu command to the Available syntaxes action menu in Format settings to hide specific syntaxes from syntax menus.
+
 
 ### Improvements
 
-- Improve UNIX script pipe handling.
-- Improve responsiveness when performing the Select All Find Matches command in large documents.
+- Make some setting dialogs resizable.
+- Allow custom syntaxes, themes, and multiple replacement definitions to be deleted by dragging them to the Trash.
+- Allow CotEditor Syntax files and multiple replacement definitions to be imported by dropping them onto their lists.
+- [dev] Tweak the accent color.
+
+
+### TODO
+
+- Localize strings added.
+    - Document Window/Document.xcstrings
+    - Settings/Other Views/SyntaxListCustomization.xcstrings
+    - Settings/Panes/FormatSettings.xcstrings
+    - Storyboards/Main.xcstrings
+
+
+
+7.0.5 (unreleased)
+--------------------------
+
+### New Features
+
+- Add the Services menu to the context menu of the file browser.
 
 
 ### Fixes
 
+- Fix an issue where the Command-Left Arrow command could fail to move the cursor to the beginning of the current wrapped visual line.
+- Fix an issue where regular-expression syntax highlighting in input fields could fail to update immediately when changing regular expression mode while editing.
+
+
+
+7.0.4 (2026-05-23)
+--------------------------
+
+### Improvements
+
+- Improve VoiceOver support by letting the editor read the text count information shown in the status bar with VO-Shift-H.
+- Improve the paired-symbol matching algorithm for brackets and quotation marks.
+- Remove the Rich Text Format built-in syntax.
+- [non-AppStore ver.] Update Sparkle from 2.9.1 to 2.9.2.
+
+
+### Fixes
+
+- Fix an issue where saving a file could drop special POSIX permission bits, such as `setuid`, `setgid`, or `sticky`.
+- Fix an issue where moving the cursor near leading invisible characters could crash the application (Thanks to felix314159!).
+- Fix an issue where copying or moving a file with certain filenames could unexpectedly change the filename while avoiding a conflict.
+- Fix an issue where the incompatible character list in the Warnings inspector could miss some characters that change after text encoding conversion.
+- Fix an issue where block comment delimiters could be inserted at the wrong indentation when commenting out lines with mixed indentation.
+- Fix an issue where NFKC Case-Fold normalization could leave default-ignorable Unicode characters in the text.
+- Fix an issue where invisible character symbols could be drawn incorrectly in right-to-left text.
+- Fix an issue where replacing an existing setting during import could fail for certain files.
+- Fix an issue on macOS 15 where the Export command in the Format settings pane’s menu could fail to export a syntax.
+- Fix typos in German localization (Thanks to Rush Ali!).
+
+
+
+7.0.3 (2026-05-14)
+--------------------------
+
+### New Features
+
+- Add the Ada syntax.
+
+
+### Improvements
+
+- Add CSS HWB and 4-digit hexadecimal alpha formats to the Edit Color Code command, and allow it to read modern space-separated CSS RGB/HSL color codes.
+- Support spaces between menu path components in Quick Actions search.
+- Support shebangs with options for syntax detection.
+- Improve line sorting commands to better preserve existing mixed line endings.
+- Limit tree-sitter-based syntax highlighting to 100,000,000 characters to avoid unexpected crashes.
+- Update the Markdown syntax to fix highlighting block quotes.
+- Update the Unicode block name list for the character inspector from Unicode 16.0.0 to Unicode 17.0.0.
+- Update tree-sitter-c to 0.24.2.
+- Update tree-sitter-swift to 0.7.2.
+- Improve overall stability and performance.
+- [trivial] Improve insertion format editors in the Snippet settings pane.
+- [dev] Update the build environment to Xcode 26.5.0.
+
+
+### Fixes
+
+- Fix an issue where customized built-in syntaxes could be ignored when their file mappings conflicted with other built-in syntaxes.
+- Fix an issue where text near the end of a very large document could fail to appear when hanging indentation was enabled.
+- Fix an issue where text following an emoji tag sequence could be rendered as missing glyphs.
+- Fix an issue where deleting by word or to the beginning of a line could delete text outside the selection.
+- Fix an issue where selecting a word could select an incorrect range.
+- Fix an issue where Sort by Pattern could reorder lines that do not contain the specified sort key.
+- Fix an issue where dropping text clippings or File Drop snippets could insert extra text when their line endings differed from the document’s.
+- Fix an issue where File Drop snippets could omit the domain from dropped web URLs.
+- Fix an issue where the Restore Defaults button in File Drop settings could remain disabled even when the current settings differed from the defaults.
+- Fix an issue where opening multiple documents at once could open them in separate windows even when window tabbing was set to Automatically.
+- Fix an issue where opening multiple documents while an empty untitled document was open could show some documents before replacing the empty document.
+- Fix an issue where canceling or failing to open a document could leave an empty untitled document behind.
+- Fix an issue where text encoding and read-only options in the Open dialog could be unavailable when selecting files together with folders.
+- Fix an issue where syntax-specific snippets and scripts could remain scoped to the previous document after switching documents in the file browser.
+- Fix an issue where the Document inspector could keep showing the previous document path after closing a document in the file browser.
+- Fix an issue where opening the original folder of an alias from the file browser could fail after requesting file access permission.
+- Fix an issue where opening a UTF-16 or UTF-32 document with a BOM using a byte-order-specific encoding could leave the BOM in the document text.
+- Fix an issue where converting a document to a non-UTF-8 encoding with AppleScript’s BOM option could add an invalid UTF-8 BOM.
+- Fix an issue where encoding detection could prioritize a later encoding declaration over the first one found in the document.
+- Fix an issue where custom syntax highlighting could crash when a begin/end regular expression matched zero-length text at the end of the document.
+- Fix an issue where an unterminated begin/end string pattern could prevent later custom syntax highlighting from being applied.
+- Fix an issue where a malformed custom syntax definition with empty delimiters or empty highlight patterns could make syntax highlighting hang.
+- Fix an issue where tree-sitter-based syntax highlighting could become misaligned after editing around consecutive empty lines or a trailing line ending.
+- Fix an issue where importing settings could incorrectly show an error for a custom theme included in the same settings archive.
+- Fix issues in the Color Code window where it could stop updating or insert invalid color codes.
+- Fix an issue where Advanced Character Count could show outdated or incorrect results.
+- Fix an issue where Unicode input could reject or show some valid Unicode code points as invalid.
+- Fix an issue where the incompatible character list in the Warnings inspector could lose its sort order after rescanning the document.
+- Fix an issue where the hidden Close Split Editor button in the navigation bar could remain available when the editor was not split.
+- Fix an issue where sidebar commands could show incorrect states, and the sidebar could reappear after leaving Versions.
+- Fix typos in German (Thanks to Rush Ali!) and some other localizations.
+
+
+
+7.0.2 (2026-04-29)
+--------------------------
+
+### Improvements
+
+- Improve reliability when UNIX scripts process large input or output through pipes.
+- Allow AppleScript encoding conversion to use encodings outside the customized encoding list.
+- Improve responsiveness when performing the Select All Find Matches command in large documents.
+- Close open documents in the file browser when their containing folder is moved to the Trash.
+- [dev] Update the build environment to Xcode 26.4.1.
+
+
+### Fixes
+
+- Fix an issue in CotEditor 7.0.1 where saving an extensionless document could leave it treated as locked by the system (`com.apple.provenance` extended attribute), preventing later overwrites.
+- Fix an issue where deleting forward with multiple cursors could crash when an insertion point was at the end of the document.
+- Fix an issue where pasting text copied from multiple selections in a CRLF document could insert incorrect text.
+- Fix an issue where the Sort by Pattern command could insert extra blank lines in CRLF documents.
+- Fix an issue where specifying an out-of-range negative line range could crash.
+- Fix an issue where highlights for instances of selected text could reappear after turning the option off.
 - Fix an issue where a failed script could leave its name in subsequent console messages.
 - Fix an issue where print settings specified by AppleScript could be ignored.
+- Fix an issue where edits in the Multiple Replace window could be lost after immediately selecting, renaming, or deleting definitions.
+- Fix an issue where Replace All and Multiple Replace could fail to apply replacements between Unicode-equivalent strings, such as `·` (U+00B7) and `·` (U+0387).
 - Fix an issue where performing Find All or Highlight All in a read-only document could make the document editable.
 - Fix an issue where regular expression search could get stuck at the same position when matching zero-length text.
 - Fix an issue where regular expression syntax highlighting could be applied incorrectly.
 - Fix an issue where custom keyboard shortcuts using the Forward Delete key could not work.
 - Fix an issue where document open/save scripts could fail to run immediately after launch or script folder changes.
+- Fix an issue where the default text encoding could be removed from the Encoding List.
+- Fix an issue where detecting encoding-incompatible characters could miss Unicode-normalized text changes.
+- Fix an issue where syntax definition files with reserved names could be imported and appear as unusable custom syntaxes.
+- Fix an issue where changes to Mode settings might not take effect immediately.
+- Fix an issue where changing the document appearance or deleting a custom theme could leave the theme editor in the Appearance settings pane showing an outdated theme.
+- Fix an issue in the file browser where renaming an item while filtering could show stale results or crash.
+- Fix an issue in the file browser where moving both a folder and its contained items to the Trash at the same time could show an incorrect confirmation or unnecessary error.
+- Fix an issue in the file browser where old filter results could be shown after changing the filter text quickly.
+- [trivial] Fix an issue where the Multiple Replace window could keep showing the previous definition after failing to load another definition.
 - [trivial] Fix an issue where key bindings equivalent to the default shortcuts could remain stored as custom settings.
+- [trivial] Fix an issue in the syntax editor where incomplete block comment delimiters could be saved.
 
 
 
-7.0.1 (815)
+7.0.1 (2026-04-26)
 --------------------------
 
 ### Improvements
@@ -41,7 +196,7 @@
 
 
 
-7.0.0 (813)
+7.0.0 (2026-04-20)
 --------------------------
 
 ### Improvements
@@ -59,7 +214,7 @@
 
 
 
-7.0.0-rc.2 (810)
+7.0.0-rc.2 (2026-04-18)
 --------------------------
 
 ### Improvements
@@ -73,7 +228,7 @@
 
 
 
-7.0.0-rc (809)
+7.0.0-rc (2026-04-15)
 --------------------------
 
 ### Compatibility Changes
@@ -103,7 +258,7 @@
 
 
 
-7.0.0-beta.3 (807)
+7.0.0-beta.3 (2026-04-09)
 --------------------------
 
 ### Improvements
@@ -122,7 +277,7 @@
 
 
 
-7.0.0-beta.2 (804)
+7.0.0-beta.2 (2026-04-01)
 --------------------------
 
 ### Improvements
@@ -143,7 +298,7 @@
 
 
 
-7.0.0-beta (802)
+7.0.0-beta (2026-03-28)
 --------------------------
 
 ### Compatibility Changes
@@ -191,7 +346,7 @@
 
 
 
-6.2.6 (798)
+6.2.6 (2026-03-23)
 --------------------------
 
 ### Improvements
@@ -208,7 +363,7 @@
 
 
 
-6.2.5 (796)
+6.2.5 (2026-03-14)
 --------------------------
 
 ### Improvements
@@ -230,7 +385,7 @@
 
 
 
-6.2.4 (794)
+6.2.4 (2026-03-01)
 --------------------------
 
 ### Improvements
@@ -250,7 +405,7 @@
 
 
 
-6.2.3 (792)
+6.2.3 (2026-02-18)
 --------------------------
 
 ### New Features
@@ -276,7 +431,7 @@
 
 
 
-6.2.2 (789)
+6.2.2 (2026-01-29)
 --------------------------
 
 ### New Features
@@ -299,7 +454,7 @@
 
 
 
-6.2.1 (787)
+6.2.1 (2025-12-27)
 --------------------------
 
 ### Improvements
@@ -316,7 +471,7 @@
 
 
 
-6.2.0 (785)
+6.2.0 (2025-12-14)
 --------------------------
 
 ### Improvements
@@ -333,7 +488,7 @@
 
 
 
-6.2.0-rc (782)
+6.2.0-rc (2025-12-07)
 --------------------------
 
 ### Improvements
@@ -349,7 +504,7 @@
 
 
 
-6.2.0-beta.4 (780)
+6.2.0-beta.4 (2025-12-02)
 --------------------------
 
 ### Improvements
@@ -370,7 +525,7 @@
 
 
 
-6.2.0-beta.3 (778)
+6.2.0-beta.3 (2025-11-29)
 --------------------------
 
 ### New Features
@@ -396,7 +551,7 @@
 
 
 
-6.2.0-beta (774)
+6.2.0-beta (2025-11-21)
 --------------------------
 
 ### New Features
@@ -421,7 +576,7 @@
 
 
 
-6.1.2 (771)
+6.1.2 (2025-11-21)
 --------------------------
 
 ### Improvements
@@ -438,7 +593,7 @@
 
 
 
-6.1.1 (769)
+6.1.1 (2025-11-09)
 --------------------------
 
 ### Improvements
@@ -456,7 +611,7 @@
 
 
 
-6.1.0 (767)
+6.1.0 (2025-11-03)
 --------------------------
 
 ### Fixes
@@ -466,7 +621,7 @@
 
 
 
-6.1.0-rc.2 (765)
+6.1.0-rc.2 (2025-11-01)
 --------------------------
 
 ### New Features
@@ -486,7 +641,7 @@
 
 
 
-6.1.0-rc (763)
+6.1.0-rc (2025-10-29)
 --------------------------
 
 ### Improvements
@@ -503,7 +658,7 @@
 
 
 
-6.1.0-beta (761)
+6.1.0-beta (2025-10-23)
 --------------------------
 
 ### New Features
@@ -522,7 +677,7 @@
 
 
 
-6.0.4 (756)
+6.0.4 (2025-10-16)
 --------------------------
 
 ### Improvements
@@ -550,7 +705,7 @@
 
 
 
-6.0.3 (751)
+6.0.3 (2025-09-25)
 --------------------------
 
 ### Improvements
@@ -565,7 +720,7 @@
 
 
 
-6.0.2 (749)
+6.0.2 (2025-09-24)
 --------------------------
 
 ### Fixes
@@ -576,12 +731,12 @@
 
 
 
-6.0.1 (747)
+6.0.1 (2025-09-21)
 --------------------------
 
 ### Improvements
 
-- Avoid assigning the Shift+Return shortcut key for a snippet.
+- Avoid assigning the Shift-Return shortcut key for a snippet.
 - [trivial] Update find result messages.
 - [dev] Update the build environment to Xcode 26.0.
 - [non-AppStore ver.] Update Sparkle from 2.8.0-beta.3 to 2.8.0.
@@ -605,7 +760,7 @@
 
 
 
-6.0.0 (744)
+6.0.0 (2025-09-16)
 --------------------------
 
 ### Improvements
@@ -624,7 +779,7 @@
 
 
 
-6.0.0-rc.2 (739)
+6.0.0-rc.2 (2025-09-11)
 --------------------------
 
 ### Improvements
@@ -641,7 +796,7 @@
 
 
 
-6.0.0-rc (737)
+6.0.0-rc (2025-09-09)
 --------------------------
 
 ### Improvements
@@ -660,7 +815,7 @@
 
 
 
-6.0.0-beta.2 (733)
+6.0.0-beta.2 (2025-09-06)
 --------------------------
 
 ### Improvements
@@ -672,7 +827,7 @@
 
 
 
-6.0.0-beta (731)
+6.0.0-beta (2025-08-24)
 --------------------------
 
 ### New Features
@@ -701,7 +856,7 @@
 
 
 
-5.2.3 (730)
+5.2.3 (2025-08-23)
 --------------------------
 
 ### Improvements
@@ -711,7 +866,7 @@
 
 
 
-5.2.2 (728)
+5.2.2 (2025-07-23)
 --------------------------
 
 ### Fixes
@@ -720,7 +875,7 @@
 
 
 
-5.2.1 (726)
+5.2.1 (2025-07-22)
 --------------------------
 
 ### Improvements
@@ -738,7 +893,7 @@
 
 
 
-5.2.0 (724)
+5.2.0 (2025-07-01)
 --------------------------
 
 ### Fixes
@@ -747,7 +902,7 @@
 
 
 
-5.2.0-rc (723)
+5.2.0-rc (2025-06-28)
 --------------------------
 
 ### Improvements
@@ -765,7 +920,7 @@
 
 
 
-5.2.0-beta (721)
+5.2.0-beta (2025-06-22)
 --------------------------
 
 ### New Features
@@ -795,7 +950,7 @@
 
 
 
-5.1.8 (720)
+5.1.8 (2025-06-12)
 --------------------------
 
 ### Improvements
@@ -812,7 +967,7 @@
 
 
 
-5.1.7 (718)
+5.1.7 (2025-06-03)
 --------------------------
 
 ### New Features
@@ -836,7 +991,7 @@
 
 
 
-5.1.6 (716)
+5.1.6 (2025-04-26)
 --------------------------
 
 ### Improvements
@@ -851,7 +1006,7 @@
 
 
 
-5.1.5 (714)
+5.1.5 (2025-04-09)
 --------------------------
 
 ### Improvements
@@ -865,7 +1020,7 @@
 
 
 
-5.1.4 (712)
+5.1.4 (2025-04-07)
 --------------------------
 
 ### Improvements
@@ -880,7 +1035,7 @@
 
 
 
-5.1.3 (709)
+5.1.3 (2025-03-30)
 --------------------------
 
 ### Improvements
@@ -903,7 +1058,7 @@
 
 
 
-5.1.2 (707)
+5.1.2 (2025-03-16)
 --------------------------
 
 ### Improvements
@@ -923,7 +1078,7 @@
 
 
 
-5.1.1 (705)
+5.1.1 (2025-03-03)
 --------------------------
 
 ### Improvements
@@ -938,7 +1093,7 @@
 
 
 
-5.1.0 (703)
+5.1.0 (2025-03-02)
 --------------------------
 
 ### Improvements
@@ -947,7 +1102,7 @@
 
 
 
-5.1.0-rc (700)
+5.1.0-rc (2025-02-28)
 --------------------------
 
 ### New Features
@@ -971,7 +1126,7 @@
 
 
 
-5.1.0-beta.3 (698)
+5.1.0-beta.3 (2025-02-20)
 --------------------------
 
 ### New Features
@@ -995,7 +1150,7 @@
 
 
 
-5.1.0-beta.2 (696)
+5.1.0-beta.2 (2025-02-12)
 --------------------------
 
 ### New Features
@@ -1014,7 +1169,7 @@
 
 
 
-5.1.0-beta (694)
+5.1.0-beta (2025-02-05)
 --------------------------
 
 ### New Features
@@ -1042,7 +1197,7 @@
 
 
 
-5.0.8 (692)
+5.0.8 (2025-01-19)
 --------------------------
 
 ### Improvements
@@ -1057,7 +1212,7 @@
 
 
 
-5.0.7 (690)
+5.0.7 (2024-12-22)
 --------------------------
 
 ### New Features
@@ -1085,7 +1240,7 @@
 
 
 
-5.0.6 (688)
+5.0.6 (2024-12-09)
 --------------------------
 
 ### New Features
@@ -1127,7 +1282,7 @@
 
 
 
-5.0.5 (686)
+5.0.5 (2024-11-21)
 --------------------------
 
 ### Improvements
@@ -1141,7 +1296,7 @@
 
 
 
-5.0.4 (684)
+5.0.4 (2024-11-05)
 --------------------------
 
 ### Improvements
@@ -1160,7 +1315,7 @@
 
 
 
-5.0.3 (682)
+5.0.3 (2024-10-14)
 --------------------------
 
 ### Improvements
@@ -1177,7 +1332,7 @@
 
 
 
-5.0.2 (680)
+5.0.2 (2024-10-02)
 --------------------------
 
 ### New Features
@@ -1204,7 +1359,7 @@
 
 
 
-5.0.1 (678)
+5.0.1 (2024-09-22)
 --------------------------
 
 ### Improvements
@@ -1224,7 +1379,7 @@
 
 
 
-5.0.0 (674)
+5.0.0 (2024-09-17)
 --------------------------
 
 ### Improvements
@@ -1242,7 +1397,7 @@
 
 
 
-5.0.0-rc (666)
+5.0.0-rc (2024-09-15)
 --------------------------
 
 ### New Features
@@ -1264,7 +1419,7 @@
 
 
 
-5.0.0-beta.3 (664)
+5.0.0-beta.3 (2024-09-10)
 --------------------------
 
 ### New Features
@@ -1299,7 +1454,7 @@
 
 
 
-5.0.0-beta.2 (663)
+5.0.0-beta.2 (2024-09-03)
 --------------------------
 
 ### Improvements
@@ -1323,7 +1478,7 @@
 
 
 
-5.0.0-beta (661)
+5.0.0-beta (2024-08-31)
 --------------------------
 
 ### New Features
@@ -1379,7 +1534,7 @@
 
 
 
-4.8.7 (657)
+4.8.7 (2024-07-07)
 --------------------------
 
 ### Improvements
@@ -1399,7 +1554,7 @@
 
 
 
-4.8.6 (655)
+4.8.6 (2024-06-17)
 --------------------------
 
 ### Implements
@@ -1417,7 +1572,7 @@
 
 
 
-4.8.5 (653)
+4.8.5 (2024-06-01)
 --------------------------
 
 ### New Features
@@ -1439,7 +1594,7 @@
 
 
 
-4.8.4 (651)
+4.8.4 (2024-05-24)
 --------------------------
 
 ### Improvements
@@ -1458,7 +1613,7 @@
 
 
 
-4.8.3 (649)
+4.8.3 (2024-05-12)
 --------------------------
 
 ### New Features
@@ -1487,7 +1642,7 @@
 
 
 
-4.8.2 (647)
+4.8.2 (2024-04-29)
 --------------------------
 
 ### Improvements
@@ -1505,7 +1660,7 @@
 
 
 
-4.8.1 (644)
+4.8.1 (2024-04-22)
 --------------------------
 
 ### Improvements
@@ -1528,7 +1683,7 @@
 
 
 
-4.8.0 (642)
+4.8.0 (2024-04-15)
 --------------------------
 
 ### Fixes
@@ -1537,7 +1692,7 @@
 
 
 
-4.8.0-rc (639)
+4.8.0-rc (2024-04-13)
 --------------------------
 
 ### New Features
@@ -1564,7 +1719,7 @@
 
 
 
-4.8.0-beta.3 (637)
+4.8.0-beta.3 (2024-03-31)
 --------------------------
 
 ### Improvements
@@ -1584,7 +1739,7 @@
 
 
 
-4.8.0-beta.2 (635)
+4.8.0-beta.2 (2024-03-09)
 --------------------------
 
 ### Fixes
@@ -1593,7 +1748,7 @@
 
 
 
-4.8.0-beta (633)
+4.8.0-beta (2024-03-09)
 --------------------------
 
 ### New Features
@@ -1628,7 +1783,7 @@
 
 
 
-4.7.4 (630)
+4.7.4 (2024-02-11)
 --------------------------
 
 ### New Features
@@ -1656,7 +1811,7 @@
 
 
 
-4.7.3 (627)
+4.7.3 (2024-01-21)
 --------------------------
 
 ### Improvements
@@ -1679,7 +1834,7 @@
 
 
 
-4.7.2 (625)
+4.7.2 (2024-01-01)
 --------------------------
 
 ### Improvements
@@ -1700,7 +1855,7 @@
 
 
 
-4.7.1 (623)
+4.7.1 (2023-12-12)
 --------------------------
 
 ### New Features
@@ -1717,7 +1872,7 @@
 
 
 
-4.7.0 (621)
+4.7.0 (2023-12-09)
 --------------------------
 
 ### Improvements
@@ -1728,7 +1883,7 @@
 
 
 
-4.7.0-rc.2 (617)
+4.7.0-rc.2 (2023-12-06)
 --------------------------
 
 ### New Features
@@ -1743,7 +1898,7 @@
 
 
 
-4.7.0-rc (615)
+4.7.0-rc (2023-12-01)
 --------------------------
 
 ### Improvements
@@ -1763,7 +1918,7 @@
 
 
 
-4.7.0-beta.2 (613)
+4.7.0-beta.2 (2023-11-26)
 --------------------------
 
 ### Improvements
@@ -1782,7 +1937,7 @@
 
 
 
-4.7.0-beta (611)
+4.7.0-beta (2023-11-23)
 --------------------------
 
 ### New Features
@@ -1802,7 +1957,7 @@
 
 
 
-4.6.5 (601)
+4.6.5 (2023-11-10)
 --------------------------
 
 ### Improvements
@@ -1820,7 +1975,7 @@
 
 
 
-4.6.4 (599)
+4.6.4 (2023-11-02)
 --------------------------
 
 ### Improvements
@@ -1836,7 +1991,7 @@
 
 
 
-4.6.3 (596)
+4.6.3 (2023-10-17)
 --------------------------
 
 ### Improvements
@@ -1855,7 +2010,7 @@
 
 
 
-4.6.2 (594)
+4.6.2 (2023-10-03)
 --------------------------
 
 ### Improvements
@@ -1875,7 +2030,7 @@
 
 
 
-4.6.1 (591)
+4.6.1 (2023-09-28)
 --------------------------
 
 ### Fixes
@@ -1887,7 +2042,7 @@
 
 
 
-4.6.0 (589)
+4.6.0 (2023-09-25)
 --------------------------
 
 ### Improvements
@@ -1897,7 +2052,7 @@
 
 
 
-4.6.0-rc (587)
+4.6.0-rc (2023-09-23)
 --------------------------
 
 ### New Features
@@ -1929,7 +2084,7 @@
 
 
 
-4.6.0-beta.3 (585)
+4.6.0-beta.3 (2023-09-12)
 --------------------------
 
 ### Improvements
@@ -1946,7 +2101,7 @@
 
 
 
-4.6.0-beta.2 (583)
+4.6.0-beta.2 (2023-08-31)
 --------------------------
 
 ### Improvements
@@ -1955,7 +2110,7 @@
 
 
 
-4.6.0-beta (581)
+4.6.0-beta (2023-08-31)
 --------------------------
 
 ### New Features
@@ -2003,7 +2158,7 @@
 
 
 
-4.5.9 (575)
+4.5.9 (2023-09-11)
 --------------------------
 
 ### Fixes
@@ -2013,7 +2168,7 @@
 
 
 
-4.5.8 (574)
+4.5.8 (2023-08-15)
 --------------------------
 
 ### Improvements
@@ -2030,7 +2185,7 @@
 
 
 
-4.5.7 (573)
+4.5.7 (2023-07-25)
 --------------------------
 
 ### Improvements
@@ -2046,7 +2201,7 @@
 
 
 
-4.5.6 (571)
+4.5.6 (2023-05-26)
 --------------------------
 
 ### Improvements
@@ -2063,7 +2218,7 @@
 
 
 
-4.5.5 (569)
+4.5.5 (2023-05-05)
 --------------------------
 
 ### New Features
@@ -2081,7 +2236,7 @@
 
 
 
-4.5.4 (566)
+4.5.4 (2023-04-18)
 --------------------------
 
 ### Improvements
@@ -2096,7 +2251,7 @@
 
 
 
-4.5.3 (564)
+4.5.3 (2023-04-16)
 --------------------------
 
 ### New Features
@@ -2121,7 +2276,7 @@
 
 
 
-4.5.2 (562)
+4.5.2 (2023-04-02)
 --------------------------
 
 ### New Features
@@ -2143,7 +2298,7 @@
 
 
 
-4.5.1 (560)
+4.5.1 (2023-03-18)
 --------------------------
 
 ### Improvements
@@ -2158,14 +2313,14 @@
 
 
 
-4.5.0 (558)
+4.5.0 (2023-03-18)
 --------------------------
 
 - No change.
 
 
 
-4.5.0-rc (557)
+4.5.0-rc (2023-03-16)
 --------------------------
 
 ### Improvements
@@ -2183,7 +2338,7 @@
 
 
 
-4.5.0-beta.2 (555)
+4.5.0-beta.2 (2023-03-11)
 --------------------------
 
 ### New Features
@@ -2199,7 +2354,7 @@
 
 
 
-4.5.0-beta (553)
+4.5.0-beta (2023-03-03)
 --------------------------
 
 ### New Features
@@ -2231,7 +2386,7 @@
 
 
 
-4.4.5 (550)
+4.4.5 (2023-02-07)
 --------------------------
 
 ### New Features
@@ -2254,7 +2409,7 @@
 
 
 
-4.4.4 (548)
+4.4.4 (2023-01-13)
 --------------------------
 
 ### Improvements
@@ -2277,7 +2432,7 @@
 
 
 
-4.4.3 (546)
+4.4.3 (2022-12-23)
 --------------------------
 
 ### Improvements
@@ -2306,7 +2461,7 @@
 
 
 
-4.4.2 (544)
+4.4.2 (2022-12-03)
 --------------------------
 
 ### Improvements
@@ -2324,7 +2479,7 @@
 
 
 
-4.4.1 (542)
+4.4.1 (2022-11-06)
 --------------------------
 
 ### Improvements
@@ -2347,14 +2502,14 @@
 
 
 
-4.4.0 (540)
+4.4.0 (2022-10-22)
 --------------------------
 
 - No change.
 
 
 
-4.4.0-rc (539)
+4.4.0-rc (2022-10-19)
 --------------------------
 
 ### Improvements
@@ -2372,7 +2527,7 @@
 
 
 
-4.4.0-beta.4 (537)
+4.4.0-beta.4 (2022-10-01)
 --------------------------
 
 ### New Features
@@ -2393,7 +2548,7 @@
 
 
 
-4.4.0-beta.3 (535)
+4.4.0-beta.3 (2022-09-23)
 --------------------------
 
 ### Improvements
@@ -2405,7 +2560,7 @@
 
 
 
-4.4.0-beta.2 (533)
+4.4.0-beta.2 (2022-09-17)
 --------------------------
 
 ### Improvements
@@ -2420,7 +2575,7 @@
 
 
 
-4.4.0-beta (531)
+4.4.0-beta (2022-09-08)
 --------------------------
 
 ### New Features
@@ -2460,7 +2615,7 @@
 
 
 
-4.3.6 (530)
+4.3.6 (2022-10-01)
 --------------------------
 
 ### Fixes
@@ -2470,7 +2625,7 @@
 
 
 
-4.3.5 (529)
+4.3.5 (2022-09-17)
 --------------------------
 
 ### Improvements
@@ -2491,7 +2646,7 @@
 
 
 
-4.3.4 (527)
+4.3.4 (2022-08-26)
 --------------------------
 
 ### Fixes
@@ -2500,7 +2655,7 @@
 
 
 
-4.3.3 (525)
+4.3.3 (2022-08-13)
 --------------------------
 
 ### Fixes
@@ -2512,7 +2667,7 @@
 
 
 
-4.3.2 (522)
+4.3.2 (2022-07-30)
 --------------------------
 
 ### Improvements
@@ -2527,7 +2682,7 @@
 
 
 
-4.3.1 (519)
+4.3.1 (2022-07-03)
 --------------------------
 
 ### New Features
@@ -2553,7 +2708,7 @@
 
 
 
-4.3.0 (517)
+4.3.0 (2022-06-18)
 --------------------------
 
 ### Improvements
@@ -2566,7 +2721,7 @@
 
 
 
-4.3.0-rc (515)
+4.3.0-rc (2022-06-14)
 --------------------------
 
 ### Improvements
@@ -2583,7 +2738,7 @@
 
 
 
-4.3.0-beta (513)
+4.3.0-beta (2022-06-11)
 --------------------------
 
 ### New Features
@@ -2607,7 +2762,7 @@
 
 
 
-4.2.3 (510)
+4.2.3 (2022-06-05)
 --------------------------
 
 ### Improvements
@@ -2627,7 +2782,7 @@
 
 
 
-4.2.2 (508)
+4.2.2 (2022-05-26)
 --------------------------
 
 ### Improvements
@@ -2651,7 +2806,7 @@
 
 
 
-4.2.1 (505)
+4.2.1 (2022-05-11)
 --------------------------
 
 ### New Features
@@ -2668,14 +2823,14 @@
 
 
 
-4.2.0 (502)
+4.2.0 (2022-05-09)
 --------------------------
 
 - [rc.3][trivial] Tweak Japanese localization.
 
 
 
-4.2.0-rc.3 (498)
+4.2.0-rc.3 (2022-05-07)
 --------------------------
 
 ### Improvements
@@ -2691,7 +2846,7 @@
 
 
 
-4.2.0-rc.2 (496)
+4.2.0-rc.2 (2022-05-03)
 --------------------------
 
 ### Fixes
@@ -2700,7 +2855,7 @@
 
 
 
-4.2.0-rc (495)
+4.2.0-rc (2022-05-03)
 --------------------------
 
 ### New Features
@@ -2728,7 +2883,7 @@
 
 
 
-4.2.0-beta.2 (493)
+4.2.0-beta.2 (2022-04-30)
 --------------------------
 
 ### Improvements
@@ -2744,7 +2899,7 @@
 
 
 
-4.2.0-beta (491)
+4.2.0-beta (2022-04-27)
 --------------------------
 
 ### New Features
@@ -2785,7 +2940,7 @@
 
 
 
-4.1.5 (487)
+4.1.5 (2022-04-09)
 --------------------------
 
 ### Improvements
@@ -2805,7 +2960,7 @@
 
 
 
-4.1.4 (485)
+4.1.4 (2022-03-26)
 --------------------------
 
 ### Improvements
@@ -2824,7 +2979,7 @@
 
 
 
-4.1.3 (483)
+4.1.3 (2022-03-05)
 --------------------------
 
 ### Improvements
@@ -2844,7 +2999,7 @@
 
 
 
-4.1.2 (481)
+4.1.2 (2022-02-20)
 --------------------------
 
 ### Improvements
@@ -2859,7 +3014,7 @@
 
 
 
-4.1.1 (479)
+4.1.1 (2022-02-16)
 --------------------------
 
 ### Improvements
@@ -2873,7 +3028,7 @@
 
 
 
-4.1.0 (477)
+4.1.0 (2022-02-15)
 --------------------------
 
 ### New Features
@@ -2888,7 +3043,7 @@
 
 
 
-4.1.0-beta (475)
+4.1.0-beta (2022-02-10)
 --------------------------
 
 ### New Features
@@ -2947,20 +3102,20 @@
 
 
 
-4.0.9 (473)
+4.0.9 (2021-11-28)
 --------------------------
 
 ### Fixes
 
 - Fix an issue that File Drop settings were not saved if both the extensions and syntax styles are for “all.”
-- Fix an issue that shortcuts for snippets did not accept the Shift key with a non-letter character, such as Shift + Return.
+- Fix an issue that shortcuts for snippets did not accept the Shift key with a non-letter character, such as Shift-Return.
 - Fix an issue that the rainbow cursor appeared when the document has a large number of incompatible characters.
 - Fix an issue that the rainbow cursor appeared when expanding the selection by “⌥⇧←” shortcut and invisible characters are contained in the new selection.
 - Fix an issue that the writing direction could be changed to right to left although when the text orientation is vertical.
 
 
 
-4.0.8 (471)
+4.0.8 (2021-09-19)
 --------------------------
 
 ### Fixes
@@ -2970,7 +3125,7 @@
 
 
 
-4.0.7-1 (469)
+4.0.7-1 (2021-09-10)
 --------------------------
 
 ### Fixes
@@ -2979,7 +3134,7 @@
 
 
 
-4.0.7 (467)
+4.0.7 (2021-09-09)
 --------------------------
 
 ### Improvements
@@ -3001,7 +3156,7 @@
 
 
 
-4.0.6 (465)
+4.0.6 (2021-07-24)
 --------------------------
 
 ### Improvements
@@ -3032,7 +3187,7 @@
 
 
 
-4.0.5 (463)
+4.0.5 (2021-06-06)
 --------------------------
 
 ### Improvements
@@ -3048,7 +3203,7 @@
 
 
 
-4.0.4 (461)
+4.0.4 (2021-06-02)
 --------------------------
 
 ### Improvements
@@ -3070,7 +3225,7 @@
 
 
 
-4.0.3 (459)
+4.0.3 (2021-05-08)
 --------------------------
 
 ### Improvements
@@ -3084,7 +3239,7 @@
 
 
 
-4.0.2 (457)
+4.0.2 (2021-03-17)
 --------------------------
 
 ### Improvements
@@ -3105,7 +3260,7 @@
 
 
 
-4.0.1 (455)
+4.0.1 (2020-11-14)
 --------------------------
 
 ### Improvements
@@ -3121,14 +3276,14 @@
 
 
 
-4.0.0 (453)
+4.0.0 (2020-11-11)
 --------------------------
 
 - No change.
 
 
 
-4.0.0-rc (452)
+4.0.0-rc (2020-11-11)
 --------------------------
 
 ### Improvements
@@ -3146,7 +3301,7 @@
 
 
 
-4.0.0-beta.5 (450)
+4.0.0-beta.5 (2020-10-25)
 --------------------------
 
 ### Improvements
@@ -3163,7 +3318,7 @@
 
 
 
-4.0.0-beta.4 (448)
+4.0.0-beta.4 (2020-10-24)
 --------------------------
 
 ### Improvements
@@ -3179,7 +3334,7 @@
 
 
 
-4.0.0-beta.3 (446)
+4.0.0-beta.3 (2020-10-17)
 --------------------------
 
 ### New Features
@@ -3214,7 +3369,7 @@
 
 
 
-4.0.0-beta.2 (444)
+4.0.0-beta.2 (2020-09-23)
 --------------------------
 
 ### Improvements
@@ -3233,7 +3388,7 @@
 
 
 
-4.0.0-beta (442)
+4.0.0-beta (2020-09-20)
 --------------------------
 
 ### New Features
@@ -3284,7 +3439,7 @@
 
 
 
-3.9.7 (437)
+3.9.7 (2020-10-18)
 --------------------------
 
 ### New Features
@@ -3304,7 +3459,7 @@
 
 
 
-3.9.6 (435)
+3.9.6 (2020-09-13)
 --------------------------
 
 ### Fixes
@@ -3316,7 +3471,7 @@
 
 
 
-3.9.5 (433)
+3.9.5 (2020-08-15)
 --------------------------
 
 ### Fixes
@@ -3327,7 +3482,7 @@
 
 
 
-3.9.4 (430)
+3.9.4 (2020-08-13)
 --------------------------
 
 ### Improvements
@@ -3345,7 +3500,7 @@
 
 
 
-3.9.3 (427)
+3.9.3 (2020-07-18)
 --------------------------
 
 ### Improvements
@@ -3362,7 +3517,7 @@
 
 
 
-3.9.2 (425)
+3.9.2 (2020-06-28)
 --------------------------
 
 ### Improvements
@@ -3387,7 +3542,7 @@
 
 
 
-3.9.1 (423)
+3.9.1 (2020-06-14)
 --------------------------
 
 ### Improvements
@@ -3408,7 +3563,7 @@
 
 
 
-3.9.0 (421)
+3.9.0 (2020-05-27)
 --------------------------
 
 ### Improvements
@@ -3424,7 +3579,7 @@
 
 
 
-3.9.0-rc (419)
+3.9.0-rc (2020-05-23)
 --------------------------
 
 ### Improvements
@@ -3445,7 +3600,7 @@
 
 
 
-3.9.0-beta.4 (417)
+3.9.0-beta.4 (2020-05-17)
 --------------------------
 
 ### Improvements
@@ -3460,7 +3615,7 @@
 
 
 
-3.9.0-beta.3 (415)
+3.9.0-beta.3 (2020-05-16)
 --------------------------
 
 ### Improvements
@@ -3490,7 +3645,7 @@
 
 
 
-3.9.0-beta.2 (413)
+3.9.0-beta.2 (2020-05-11)
 --------------------------
 
 ### New Features
@@ -3515,7 +3670,7 @@
 
 
 
-3.9.0-beta (411)
+3.9.0-beta (2020-05-03)
 --------------------------
 
 ### New Features
@@ -3559,7 +3714,7 @@
 
 
 
-3.8.12 (400)
+3.8.12 (2020-03-08)
 --------------------------
 
 ### Improvements
@@ -3579,7 +3734,7 @@
 
 
 
-3.8.11 (398)
+3.8.11 (2020-02-28)
 --------------------------
 
 ### Improvements
@@ -3601,7 +3756,7 @@
 
 
 
-3.8.10 (396)
+3.8.10 (2020-02-15)
 --------------------------
 
 ### Improvements
@@ -3632,7 +3787,7 @@
 
 
 
-3.8.9 (394)
+3.8.9 (2020-01-30)
 --------------------------
 
 ### Improvements
@@ -3648,7 +3803,7 @@
 
 
 
-3.8.8 (391)
+3.8.8 (2020-01-28)
 --------------------------
 
 ### New Features
@@ -3684,7 +3839,7 @@
 
 
 
-3.8.7 (389)
+3.8.7 (2019-12-09)
 --------------------------
 
 ### Improvements
@@ -3694,7 +3849,7 @@
 
 
 
-3.8.6 (387)
+3.8.6 (2019-12-07)
 --------------------------
 
 ### Improvements
@@ -3717,7 +3872,7 @@
 
 
 
-3.8.5 (384)
+3.8.5 (2019-11-14)
 --------------------------
 
 ### Improvements
@@ -3744,7 +3899,7 @@
 
 
 
-3.8.4 (381)
+3.8.4 (2019-10-23)
 --------------------------
 
 ### Improvements
@@ -3758,7 +3913,7 @@
 
 
 
-3.8.3 (379)
+3.8.3 (2019-10-20)
 --------------------------
 
 ### Improvements
@@ -3780,7 +3935,7 @@
 
 
 
-3.8.2 (377)
+3.8.2 (2019-10-14)
 --------------------------
 
 ### Fixes
@@ -3789,7 +3944,7 @@
 
 
 
-3.8.1 (375)
+3.8.1 (2019-10-11)
 --------------------------
 
 ### Fixes
@@ -3799,14 +3954,14 @@
 
 
 
-3.8.0 (373)
+3.8.0 (2019-10-09)
 --------------------------
 
 - No change.
 
 
 
-3.8.0-beta.2 (372)
+3.8.0-beta.2 (2019-10-08)
 --------------------------
 
 ### Fixes
@@ -3815,7 +3970,7 @@
 
 
 
-3.8.0-beta (371)
+3.8.0-beta (2019-10-08)
 --------------------------
 
 ### New Features
@@ -3847,7 +4002,7 @@
 
 
 
-3.7.8 (361)
+3.7.8 (2019-06-30)
 --------------------------
 
 ### Improvements
@@ -3861,7 +4016,7 @@
 
 
 
-3.7.7 (358)
+3.7.7 (2019-06-25)
 --------------------------
 
 ### New Features
@@ -3872,7 +4027,7 @@
 ### Improvements
 
 - Keep last opacity state of restored document windows.
-- Update behavior of Opt+Arrow shortcut series.
+- Update behavior of Opt-Arrow shortcut series.
 
 
 ### Fixes
@@ -3885,7 +4040,7 @@
 
 
 
-3.7.6 (355)
+3.7.6 (2019-06-18)
 --------------------------
 
 ### New Features
@@ -3899,7 +4054,7 @@
 - Add “Hide extension” option to the Save dialog.
 - Use the system appearance in the input candidate window even when the theme has a dark background color.
 - Give some feedback about the search result in VoiceOver.
-- Improve the behavior of Opt+Arrow shortcut series to stop the by punctuation marks, such as `.` and `:`.
+- Improve the behavior of Opt-Arrow shortcut series to stop the by punctuation marks, such as `.` and `:`.
 - Hide unused items in the font panel toolbar.
 - Optimize the performance of finding the matching brace to highlight.
 - Optimize the performance of line number drawing.
@@ -3917,7 +4072,7 @@
 
 
 
-3.7.5 (353)
+3.7.5 (2019-05-27)
 --------------------------
 
 ### Improvements
@@ -3936,7 +4091,7 @@
 
 
 
-3.7.4 (351)
+3.7.4 (2019-05-18)
 --------------------------
 
 ### New Features
@@ -3955,7 +4110,7 @@
 
 
 
-3.7.3 (349)
+3.7.3 (2019-04-26)
 --------------------------
 
 ### Improvements
@@ -3973,7 +4128,7 @@
 
 
 
-3.7.2 (347)
+3.7.2 (2019-04-04)
 --------------------------
 
 ### Improvements
@@ -3995,7 +4150,7 @@
 
 
 
-3.7.1 (344)
+3.7.1 (2019-02-23)
 --------------------------
 
 ### Improvements
@@ -4011,7 +4166,7 @@
 
 
 
-3.7.0 (342)
+3.7.0 (2019-02-14)
 --------------------------
 
 ### Fixes
@@ -4021,7 +4176,7 @@
 
 
 
-3.7.0-rc.5 (339)
+3.7.0-rc.5 (2019-02-11)
 --------------------------
 
 ### Fixes
@@ -4031,7 +4186,7 @@
 
 
 
-3.7.0-rc.4 (337)
+3.7.0-rc.4 (2019-02-11)
 --------------------------
 
 ### Improvements
@@ -4048,7 +4203,7 @@
 
 
 
-3.7.0-rc.3 (335)
+3.7.0-rc.3 (2019-02-09)
 --------------------------
 
 ### Improvements
@@ -4069,7 +4224,7 @@
 
 
 
-3.7.0-rc.2 (333)
+3.7.0-rc.2 (2019-02-02)
 --------------------------
 
 ### Improvements
@@ -4088,7 +4243,7 @@
 
 
 
-3.7.0-rc (331)
+3.7.0-rc (2019-01-24)
 --------------------------
 
 ### New Features
@@ -4104,7 +4259,7 @@
 
 
 
-3.7.0-beta.5 (329)
+3.7.0-beta.5 (2019-01-22)
 --------------------------
 
 ### New Features
@@ -4126,7 +4281,7 @@
 
 
 
-3.7.0-beta.4 (327)
+3.7.0-beta.4 (2019-01-14)
 --------------------------
 
 ### Improvements
@@ -4145,13 +4300,13 @@
 
 
 
-3.7.0-beta.3 (325)
+3.7.0-beta.3 (2019-01-10)
 --------------------------
 
 ### Improvements
 
 - [beta] Support commenting-out/uncommenting in multi-cursor editing.
-- [beta] Support `^T` and `fn+delete` (`^D`) shortcut in multi-cursor editing.
+- [beta] Support `^T` and `fn-delete` (`^D`) shortcut in multi-cursor editing.
 
 
 ### Fixes
@@ -4166,7 +4321,7 @@
 
 
 
-3.7.0-beta.2 (323)
+3.7.0-beta.2 (2019-01-06)
 --------------------------
 
 ### Improvements
@@ -4183,7 +4338,7 @@
 
 
 
-3.7.0-beta (321)
+3.7.0-beta (2019-01-06)
 --------------------------
 
 ### New Features
@@ -4192,7 +4347,7 @@
 
 
 
-3.6.12 (311)
+3.6.12 (2019-01-15)
 --------------------------
 
 ### Improvements
@@ -4213,7 +4368,7 @@
 
 
 
-3.6.11 (309)
+3.6.11 (2019-01-05)
 --------------------------
 
 ### Improvements
@@ -4227,7 +4382,7 @@
 
 
 
-3.6.10 (307)
+3.6.10 (2019-01-01)
 --------------------------
 
 ### New Features
@@ -4271,7 +4426,7 @@
 
 
 
-3.6.9 (305)
+3.6.9 (2018-12-12)
 --------------------------
 
 ### Improvements
@@ -4288,7 +4443,7 @@
 
 
 
-3.6.8 (303)
+3.6.8 (2018-12-08)
 --------------------------
 
 ### New Features
@@ -4314,7 +4469,7 @@
 
 
 
-3.6.7 (301)
+3.6.7 (2018-11-27)
 --------------------------
 
 ### Improvements
@@ -4339,7 +4494,7 @@
 
 
 
-3.6.6 (299)
+3.6.6 (2018-11-20)
 --------------------------
 
 ### Fixes
@@ -4350,7 +4505,7 @@
 
 
 
-3.6.5 (297)
+3.6.5 (2018-11-19)
 --------------------------
 
 ### New Features
@@ -4375,7 +4530,7 @@
 
 
 
-3.6.4 (294)
+3.6.4 (2018-11-10)
 --------------------------
 
 ### New Features
@@ -4396,14 +4551,14 @@
 
 
 
-3.6.3 (292)
+3.6.3 (2018-10-29)
 --------------------------
 
 ### Improvements
 
 - Assign `⌘⇧[` shortcut to “Show Next Tab” command instead of “Surround Selection with Brackets” command.
 - Treat a logical line, which is delimited by line ending characters, as one line in VoiceOver, instead of a visual (wrapped) line.
-    - Thereby, users can now also know the current line number by pressing VoiceOver shortcut VO+F3.
+    - Thereby, users can now also know the current line number by pressing VoiceOver shortcut VO-F3.
 - Improve the accessibility of user interface elements with VoiceOver.
 - Avoid performing custom sort with an invalid parameter.
 - Display default setting values as the input field's placeholder in preferences window when empty.
@@ -4420,7 +4575,7 @@
 
 
 
-3.6.2 (290)
+3.6.2 (2018-10-14)
 --------------------------
 
 ### New Features
@@ -4446,7 +4601,7 @@
 
 
 
-3.6.1 (288)
+3.6.1 (2018-10-04)
 --------------------------
 
 ### New Features
@@ -4471,7 +4626,7 @@
 
 
 
-3.6.0 (286)
+3.6.0 (2018-09-25)
 --------------------------
 
 ### Fixes
@@ -4483,7 +4638,7 @@
 
 
 
-3.6.0-beta.3 (279)
+3.6.0-beta.3 (2018-09-20)
 --------------------------
 
 ### Improvements
@@ -4497,7 +4652,7 @@
 
 
 
-3.6.0-beta.2 (278)
+3.6.0-beta.2 (2018-09-16)
 --------------------------
 
 ### New Features
@@ -4525,7 +4680,7 @@
 
 
 
-3.6.0-beta (276)
+3.6.0-beta (2018-09-14)
 --------------------------
 
 ### New Features
@@ -4560,7 +4715,7 @@
 
 
 
-3.5.4 (275)
+3.5.4 (2018-09-18)
 --------------------------
 
 ### Fixes
@@ -4570,7 +4725,7 @@
 
 
 
-3.5.3 (274)
+3.5.3 (2018-09-08)
 --------------------------
 
 ### Fixes
@@ -4579,7 +4734,7 @@
 
 
 
-3.5.2 (273)
+3.5.2 (2018-09-07)
 --------------------------
 
 ### Improvements
@@ -4599,7 +4754,7 @@
 
 
 
-3.5.1 (271)
+3.5.1 (2018-08-28)
 --------------------------
 
 ### Improvements
@@ -4617,7 +4772,7 @@
 
 
 
-3.5.0 (268)
+3.5.0 (2018-08-15)
 --------------------------
 
 ### Improvements
@@ -4628,7 +4783,7 @@
 
 
 
-3.5.0-rc (266)
+3.5.0-rc (2018-08-08)
 --------------------------
 
 ### New Features
@@ -4648,7 +4803,7 @@
 
 
 
-3.5.0-beta.2 (264)
+3.5.0-beta.2 (2018-08-04)
 --------------------------
 
 ### Improvements
@@ -4660,7 +4815,7 @@
 
 
 
-3.5.0-beta (263)
+3.5.0-beta (2018-07-30)
 --------------------------
 
 ### New Features
@@ -4695,7 +4850,7 @@
 
 
 
-3.4.4 (261)
+3.4.4 (2018-07-08)
 --------------------------
 
 ### Fixes
@@ -4705,7 +4860,7 @@
 
 
 
-3.4.3 (259)
+3.4.3 (2018-06-26)
 --------------------------
 
 ### Fixes
@@ -4719,7 +4874,7 @@
 
 
 
-3.4.2 (257)
+3.4.2 (2018-06-05)
 --------------------------
 
 ### Improvements
@@ -4737,7 +4892,7 @@
 
 
 
-3.4.1 (253)
+3.4.1 (2018-05-28)
 --------------------------
 
 ### Improvements
@@ -4756,7 +4911,7 @@
 
 
 
-3.4.0 (251)
+3.4.0 (2018-05-15)
 --------------------------
 
 ### Improvements
@@ -4766,7 +4921,7 @@
 
 
 
-3.4.0-rc (249)
+3.4.0-rc (2018-05-10)
 --------------------------
 
 ### Improvements
@@ -4783,7 +4938,7 @@
 
 
 
-3.4.0-beta.4 (246)
+3.4.0-beta.4 (2018-05-01)
 --------------------------
 
 ### Fixes
@@ -4792,7 +4947,7 @@
 
 
 
-3.4.0-beta.3 (245)
+3.4.0-beta.3 (2018-04-30)
 --------------------------
 
 ### Improvements
@@ -4811,7 +4966,7 @@
 
 
 
-3.4.0-beta.2 (243)
+3.4.0-beta.2 (2018-04-14)
 --------------------------
 
 ### Improvements
@@ -4832,14 +4987,14 @@
 
 
 
-3.4.0-beta (241)
+3.4.0-beta (2018-04-07)
 --------------------------
 
 ### New Features
 
 - Replace matches with preset replacement definition (Find > Show Replacement Set).
 - Add outline menu to side bar.
-- Select tabbed window with `⌘+number`.
+- Select tabbed window with `⌘-number`.
 - Parse regular expression pattern in find string field in regular expression mode:
     - Syntax highlight.
     - Highlight matching brace by moving cursor.
@@ -4874,7 +5029,7 @@
 
 
 
-3.3.5 (237)
+3.3.5 (2018-03-10)
 --------------------------
 
 ### Improvements
@@ -4890,12 +5045,12 @@
 
 
 
-3.3.4 (234)
+3.3.4 (2018-03-03)
 --------------------------
 
 ### Improvements
 
-- When “Indent with Tab key” is on, reduce indent level of the current line with Shift+Tab even when nothing is selected.
+- When “Indent with Tab key” is on, reduce indent level of the current line with Shift-Tab even when nothing is selected.
 
 
 ### Fixes
@@ -4909,7 +5064,7 @@
 
 
 
-3.3.3 (232)
+3.3.3 (2018-02-25)
 --------------------------
 
 ### New Features
@@ -4943,7 +5098,7 @@
 
 
 
-3.3.2 (229)
+3.3.2 (2018-02-12)
 --------------------------
 
 ### Fixes
@@ -4953,7 +5108,7 @@
 
 
 
-3.3.1 (228)
+3.3.1 (2018-02-12)
 --------------------------
 
 ### Fixes
@@ -4964,7 +5119,7 @@
 
 
 
-3.3.0 (224)
+3.3.0 (2018-02-09)
 --------------------------
 
 ### Fixes
@@ -4974,7 +5129,7 @@
 
 
 
-3.3.0-beta.3 (220)
+3.3.0-beta.3 (2018-02-03)
 --------------------------
 
 ### Improvements
@@ -4996,7 +5151,7 @@
 
 
 
-3.3.0-beta.2 (218)
+3.3.0-beta.2 (2018-01-26)
 --------------------------
 
 ### Improvements
@@ -5018,7 +5173,7 @@
 
 
 
-3.3.0-beta (216)
+3.3.0-beta (2018-01-24)
 --------------------------
 
 ### New Features
@@ -5076,7 +5231,7 @@
 
 
 
-3.2.8 (213)
+3.2.8 (2018-01-22)
 --------------------------
 
 ### Fixes
@@ -5087,7 +5242,7 @@
 
 
 
-3.2.7 (212)
+3.2.7 (2017-12-29)
 --------------------------
 
 ### Improvements
@@ -5099,12 +5254,12 @@
 
 - Fix an issue where the find panel was over expanded when performing “Find All” with a long find string.
 - Fix an issue where the file size in the status bar was not updated after saving.
-- Fix an issue where the find panel didn't select the previous field with Shift + Tab keys.
+- Fix an issue where the find panel didn't select the previous field with Shift-Tab keys.
 - Fix an issue where the application frozen by opening the File Mapping Conflicts list when filename conflict exists.
 
 
 
-3.2.6 (210)
+3.2.6 (2017-12-11)
 --------------------------
 
 ### Fixes
@@ -5116,7 +5271,7 @@
 
 
 
-3.2.5 (208)
+3.2.5 (2017-11-28)
 --------------------------
 
 ### Improvements
@@ -5136,7 +5291,7 @@
 
 
 
-3.2.4 (207)
+3.2.4 (2017-11-05)
 --------------------------
 
 ### Improvements
@@ -5161,7 +5316,7 @@
 
 
 
-3.2.3 (205)
+3.2.3 (2017-10-22)
 --------------------------
 
 ### Improvements
@@ -5182,7 +5337,7 @@
 
 
 
-3.2.2 (203)
+3.2.2 (2017-10-01)
 --------------------------
 
 ### New Features
@@ -5212,7 +5367,7 @@
 
 
 
-3.2.1 (201)
+3.2.1 (2017-08-26)
 --------------------------
 
 ### Improvements
@@ -5235,7 +5390,7 @@
 
 
 
-3.2.0 (196)
+3.2.0 (2017-07-15)
 --------------------------
 
 ### Fixes
@@ -5244,7 +5399,7 @@
 
 
 
-3.2.0-beta.2 (194)
+3.2.0-beta.2 (2017-07-10)
 --------------------------
 
 ### Improvements
@@ -5261,7 +5416,7 @@
 
 
 
-3.2.0-beta (193)
+3.2.0-beta (2017-05-07)
 --------------------------
 
 ### New Features
@@ -5314,7 +5469,7 @@
 
 
 
-3.1.8 (191)
+3.1.8 (2017-03-15)
 --------------------------
 
 ### Improvements
@@ -5331,7 +5486,7 @@
 
 
 
-3.1.7 (188)
+3.1.7 (2017-03-03)
 --------------------------
 
 ### Fixes
@@ -5340,7 +5495,7 @@
 
 
 
-3.1.6 (186)
+3.1.6 (2017-03-02)
 --------------------------
 
 ### Improvements
@@ -5359,7 +5514,7 @@
 
 
 
-3.1.5 (184)
+3.1.5 (2017-02-22)
 --------------------------
 
 ### Fixes
@@ -5368,7 +5523,7 @@
 
 
 
-3.1.4 (182)
+3.1.4 (2017-02-20)
 --------------------------
 
 ### New Features
@@ -5388,7 +5543,7 @@
 
 
 
-3.1.3 (180)
+3.1.3 (2017-01-31)
 --------------------------
 
 ### New Features
@@ -5427,7 +5582,7 @@
 
 
 
-3.1.2 (177)
+3.1.2 (2016-12-10)
 --------------------------
 
 ### New Features
@@ -5469,7 +5624,7 @@
 
 
 
-3.1.1 (174)
+3.1.1 (2016-11-18)
 --------------------------
 
 ### Fixes
@@ -5478,7 +5633,7 @@
 
 
 
-3.1.0 (172)
+3.1.0 (2016-11-17)
 --------------------------
 
 ### New Features
@@ -5507,7 +5662,7 @@
 
 
 
-3.0.5 (170)
+3.0.5 (2016-11-15)
 --------------------------
 
 ### Fixes
@@ -5519,7 +5674,7 @@
 
 
 
-3.0.4 (167)
+3.0.4 (2016-10-31)
 --------------------------
 
 ### Improvements
@@ -5536,7 +5691,7 @@
 
 
 
-3.0.3 (165)
+3.0.3 (2016-10-25)
 --------------------------
 
 ### New Features
@@ -5564,12 +5719,12 @@
 - Fix an issue where status bar layout collapsed if status line overflows.
 - Fix an issue where document theme reloaded unnecessarily on the first time Appearance pane display.
 - Fix an issue where the application could crash when a script was failed.
-- Fix an issue where scrolling to the end of the document with `⌘`+`↓` shortcut didn't scroll to the end.
+- Fix an issue where scrolling to the end of the document with `⌘`-`↓` shortcut didn't scroll to the end.
 - Improve general stability.
 
 
 
-3.0.2 (163)
+3.0.2 (2016-10-17)
 --------------------------
 
 ### Fixes
@@ -5586,7 +5741,7 @@
 
 
 
-3.0.1 (161)
+3.0.1 (2016-10-11)
 --------------------------
 
 ### Improvements
@@ -5616,7 +5771,7 @@
 
 
 
-3.0.0 (154)
+3.0.0 (2016-10-04)
 --------------------------
 
 ### Improvements
@@ -5643,7 +5798,7 @@
 
 
 
-3.0.0-rc.2 (150)
+3.0.0-rc.2 (2016-10-01)
 --------------------------
 
 ### Improvements
@@ -5657,7 +5812,7 @@
 
 
 
-3.0.0-rc (148)
+3.0.0-rc (2016-09-29)
 --------------------------
 
 ### New Features
@@ -5688,7 +5843,7 @@
 
 
 
-3.0.0-beta.3 (146)
+3.0.0-beta.3 (2016-09-23)
 --------------------------
 
 ### Fixes
@@ -5699,7 +5854,7 @@
 
 
 
-3.0.0-beta.2 (144)
+3.0.0-beta.2 (2016-09-21)
 --------------------------
 
 ### Improvements
@@ -5728,7 +5883,7 @@
 
 
 
-3.0.0-beta (142)
+3.0.0-beta (2016-09-13)
 --------------------------
 
 ### New Features
@@ -5795,7 +5950,7 @@
 
 
 
-2.5.7 (138)
+2.5.7 (2016-08-22)
 --------------------------
 
 ### Fixes
@@ -5809,7 +5964,7 @@
 
 
 
-2.5.6 (135)
+2.5.6 (2016-06-16)
 --------------------------
 
 ### New Features
@@ -5852,7 +6007,7 @@
 
 
 
-2.5.5 (130)
+2.5.5 (2016-05-23)
 --------------------------
 
 ### New Features
@@ -5886,7 +6041,7 @@
 
 
 
-2.5.4 (127)
+2.5.4 (2016-05-13)
 --------------------------
 
 ### Fixes
@@ -5896,7 +6051,7 @@
 
 
 
-2.5.3 (125)
+2.5.3 (2016-05-12)
 --------------------------
 
 ### New Features
@@ -5935,7 +6090,7 @@
 
 
 
-2.5.2 (123)
+2.5.2 (2016-05-04)
 --------------------------
 
 ### Fixes
@@ -5947,7 +6102,7 @@
 
 
 
-2.5.1 (120)
+2.5.1 (2016-04-25)
 --------------------------
 
 ### Improvements
@@ -5966,7 +6121,7 @@
 
 
 
-2.5.0 (117)
+2.5.0 (2016-04-23)
 --------------------------
 
 ### Improvements
@@ -5985,7 +6140,7 @@
 
 
 
-2.5.0-beta (113)
+2.5.0-beta (2016-04-13)
 --------------------------
 
 ### New Features
@@ -6044,7 +6199,7 @@
 
 
 
-2.4.4 (111)
+2.4.4 (2016-03-16)
 --------------------------
 
 ### New Features
@@ -6080,7 +6235,7 @@
 
 
 
-2.4.3 (108)
+2.4.3 (2016-03-02)
 --------------------------
 
 ### Improvements
@@ -6107,7 +6262,7 @@
 
 
 
-2.4.2 (105)
+2.4.2 (2016-02-13)
 --------------------------
 
 ### Fixes
@@ -6116,7 +6271,7 @@
 
 
 
-2.4.1 (103)
+2.4.1 (2016-02-12)
 --------------------------
 
 ### Improvements
@@ -6133,7 +6288,7 @@
 
 
 
-2.4.0 (101)
+2.4.0 (2016-02-09)
 --------------------------
 
 ### Improvements
@@ -6147,7 +6302,7 @@
 
 
 
-2.4.0-beta (97)
+2.4.0-beta (2016-02-01)
 --------------------------
 
 ### New Features
@@ -6207,7 +6362,7 @@
 
 
 
-2.3.4 (95)
+2.3.4 (2016-01-13)
 --------------------------
 
 ### Improvements
@@ -6229,7 +6384,7 @@
 
 
 
-2.3.3 (91)
+2.3.3 (2016-01-09)
 --------------------------
 
 ### New Features
@@ -6280,7 +6435,7 @@
 
 
 
-2.3.2 (89)
+2.3.2 (2015-12-19)
 --------------------------
 
 ### New Features
@@ -6325,7 +6480,7 @@
 
 
 
-2.3.1 (85)
+2.3.1 (2015-11-14)
 --------------------------
 
 ### New Features
@@ -6351,7 +6506,7 @@
 
 
 
-2.3.0 (82)
+2.3.0 (2015-11-07)
 --------------------------
 
 ### New Features
@@ -6376,7 +6531,7 @@
 
 
 
-2.3.0-beta (80)
+2.3.0-beta (2015-10-24)
 --------------------------
 
 ### New Features
@@ -6414,7 +6569,7 @@
 
 
 
-2.2.2 (78)
+2.2.2 (2015-10-19)
 --------------------------
 
 ### New Features
@@ -6440,7 +6595,7 @@
 
 
 
-2.2.1 (75)
+2.2.1 (2015-10-04)
 --------------------------
 
 ### Fixes
@@ -6449,7 +6604,7 @@
 
 
 
-2.2.0 (74)
+2.2.0 (2015-10-03)
 --------------------------
 
 ### Fixes
@@ -6458,7 +6613,7 @@
 
 
 
-2.2.0-rc.2 (74b)
+2.2.0-rc.2 (2015-09-30)
 --------------------------
 
 ### New Features
@@ -6498,7 +6653,7 @@
 
 
 
-2.2.0-rc (71)
+2.2.0-rc (2015-09-14)
 --------------------------
 
 ### New Features
@@ -6552,7 +6707,7 @@
 
 
 
-2.2.0-beta
+2.2.0-beta (2015-08-20)
 --------------------------
 
 ### New Features
@@ -6611,7 +6766,7 @@
 
 
 
-2.1.6
+2.1.6 (2015-07-17)
 --------------------------
 
 ### Fixes
@@ -6620,7 +6775,7 @@
 
 
 
-2.1.5
+2.1.5 (2015-07-14)
 --------------------------
 
 ### Fixes
@@ -6629,7 +6784,7 @@
 
 
 
-2.1.4
+2.1.4 (2015-07-12)
 --------------------------
 
 ### New Features
@@ -6666,7 +6821,7 @@
 
 
 
-2.1.3
+2.1.3 (2015-03-26)
 --------------------------
 
 ### Improvements
@@ -6682,7 +6837,7 @@
 
 
 
-2.1.2
+2.1.2 (2015-03-10)
 --------------------------
 
 ### Improvements
@@ -6704,7 +6859,7 @@
 
 
 
-2.1.1
+2.1.1 (2015-03-01)
 --------------------------
 
 ### Fixes
@@ -6715,7 +6870,7 @@
 
 
 
-2.1.0
+2.1.0 (2015-02-19)
 --------------------------
 
 ### Improvements
@@ -6738,7 +6893,7 @@
 
 
 
-2.1.0-rc.2
+2.1.0-rc.2 (2015-02-12)
 --------------------------
 
 ### New Features
@@ -6753,7 +6908,7 @@
 
 
 
-2.1.0-rc
+2.1.0-rc (2015-02-11)
 --------------------------
 
 ### Improvements
@@ -6772,7 +6927,7 @@
 
 
 
-2.1.0-beta.2
+2.1.0-beta.2 (2015-01-30)
 --------------------------
 
 ### Improvements
@@ -6794,7 +6949,7 @@
 
 
 
-2.1.0-beta
+2.1.0-beta (2015-01-28)
 --------------------------
 
 ### New Features
@@ -6864,7 +7019,7 @@
 
 
 
-2.0.3
+2.0.3 (2014-12-14)
 --------------------------
 
 ### New Features
@@ -6906,7 +7061,7 @@
 
 
 
-2.0.2
+2.0.2 (2014-11-26)
 --------------------------
 
 ### Fixes
@@ -6915,7 +7070,7 @@
 
 
 
-2.0.1
+2.0.1 (2014-11-25)
 --------------------------
 
 ### New Features
@@ -6964,7 +7119,7 @@
 
 
 
-2.0.0
+2.0.0 (2014-11-13)
 --------------------------
 
 ### Improvements
@@ -6993,7 +7148,7 @@
 
 
 
-2.0.0-rc
+2.0.0-rc (2014-11-04)
 --------------------------
 
 ### New Features
@@ -7041,7 +7196,7 @@
 
 
 
-2.0.0-beta.2
+2.0.0-beta.2 (2014-10-26)
 --------------------------
 
 ### Improvements
@@ -7062,7 +7217,7 @@
 
 
 
-2.0.0-beta
+2.0.0-beta (2014-10-17)
 --------------------------
 
 ### New Features

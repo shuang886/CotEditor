@@ -23,13 +23,12 @@
 //  limitations under the License.
 //
 
-import Combine
 import Foundation
 import UniformTypeIdentifiers
 import Defaults
 import URLUtils
 
-@MainActor final class ThemeManager: SettingFileManaging {
+@MainActor @Observable final class ThemeManager: SettingFileManaging {
     
     typealias Setting = Theme
     
@@ -46,7 +45,7 @@ import URLUtils
     let reservedNames: [String] = []
     
     let bundledSettingNames: [String]
-    @Published var settingNames: [String] = []
+    var settingNames: [String] = []
     var cachedSettings: [String: Setting] = [:]
     
     
@@ -166,7 +165,7 @@ import URLUtils
     /// - Returns: The name of the created setting.
     @discardableResult func createUntitledSetting() throws -> String {
         
-        let name = String(localized: "Untitled", comment: "initial setting filename")
+        let name = String(localized: "Untitled", comment: "default name")
             .appendingUniqueNumber(in: self.settingNames)
         
         try self.save(setting: Setting(), name: name)
@@ -178,6 +177,8 @@ import URLUtils
     // MARK: Setting File Managing
     
     /// Builds the list of available settings by considering both user and bundled settings.
+    ///
+    /// - Returns: Available setting names.
     nonisolated func listAvailableSettings() -> [String] {
         
         let userSettingNames = self.userSettingFileURLs

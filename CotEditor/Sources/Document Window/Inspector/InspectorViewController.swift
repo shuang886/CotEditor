@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2016-2025 1024jp
+//  © 2016-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -89,7 +89,9 @@ final class InspectorViewController: NSTabViewController {
         }
         
         // select last used pane
-        self.selectedTabViewItemIndex = UserDefaults.standard[.selectedInspectorPaneIndex]
+        if let pane = InspectorPane(rawValue: UserDefaults.standard[.selectedInspectorPaneIndex]) {
+            self.selectedTabViewItemIndex = pane.rawValue
+        }
         
         // set accessibility
         self.view.setAccessibilityElement(true)
@@ -134,6 +136,7 @@ final class InspectorViewController: NSTabViewController {
 
 private extension InspectorPane {
     
+    /// The localized label for the pane.
     var label: String {
         
         switch self {
@@ -150,6 +153,7 @@ private extension InspectorPane {
     }
     
     
+    /// The system image name for the pane.
     var systemImage: String {
         
         switch self {
@@ -160,6 +164,10 @@ private extension InspectorPane {
     }
     
     
+    /// Creates a view controller for the pane.
+    ///
+    /// - Parameter document: The document to inspect.
+    /// - Returns: A view controller for the pane.
     @MainActor func viewController(document: DataDocument?) -> sending NSViewController {
         
         switch self {
@@ -169,35 +177,6 @@ private extension InspectorPane {
                 InspectorPaneHostingController(rootView: OutlineInspectorView(document: document))
             case .warnings:
                 InspectorPaneHostingController(rootView: WarningInspectorView(document: document))
-        }
-    }
-}
-
-
-@available(macOS, deprecated: 26)
-extension InspectorViewController: InspectorTabViewDelegate {
-    
-    func tabView(_ tabView: NSTabView, selectedImageForItem tabViewItem: NSTabViewItem) -> NSImage? {
-        
-        let index = tabView.indexOfTabViewItem(tabViewItem)
-        
-        guard let pane = InspectorPane(rawValue: index) else { return nil }
-        
-        return NSImage(systemSymbolName: pane.selectedImageName, accessibilityDescription: pane.label)?
-            .withSymbolConfiguration(.init(pointSize: 0, weight: .semibold))
-    }
-}
-
-
-@available(macOS, deprecated: 26)
-private extension InspectorPane {
-    
-    var selectedImageName: String {
-        
-        switch self {
-            case .document: "document.fill"
-            case .outline: "list.bullet.indent"
-            case .warnings: "exclamationmark.triangle.fill"
         }
     }
 }

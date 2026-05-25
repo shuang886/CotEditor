@@ -1,6 +1,6 @@
 //
 //  FilePermissionTests.swift
-//  FilePermissionTests
+//  DocumentFileTests
 //
 //  CotEditor
 //  https://coteditor.com
@@ -9,7 +9,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2016-2024 1024jp
+//  © 2016-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 //
 
 import Testing
-@testable import FilePermissions
+@testable import DocumentFile
 
 struct FilePermissionTests {
     
@@ -33,9 +33,16 @@ struct FilePermissionTests {
         
         #expect(FilePermissions(mask: 0o777).mask == 0o777)
         #expect(FilePermissions(mask: 0o643).mask == 0o643)
+        #expect(FilePermissions(mask: 0o4755).mask == 0o4755)
         
         #expect(FilePermissions(mask: 0o777).symbolic == "rwxrwxrwx")
         #expect(FilePermissions(mask: 0o643).symbolic == "rw-r---wx")
+        #expect(FilePermissions(mask: 0o4755).symbolic == "rwsr-xr-x")
+        #expect(FilePermissions(mask: 0o4644).symbolic == "rwSr--r--")
+        #expect(FilePermissions(mask: 0o2755).symbolic == "rwxr-sr-x")
+        #expect(FilePermissions(mask: 0o2644).symbolic == "rw-r-Sr--")
+        #expect(FilePermissions(mask: 0o1755).symbolic == "rwxr-xr-t")
+        #expect(FilePermissions(mask: 0o1644).symbolic == "rw-r--r-T")
         
         #expect(FilePermissions(mask: 0o777).description == "rwxrwxrwx")
         #expect(FilePermissions(mask: 0o643).description == "rw-r---wx")
@@ -48,6 +55,9 @@ struct FilePermissionTests {
         #expect(FilePermissions(mask: 0o643).formatted(.filePermissions(.full)) == "643 (-rw-r---wx)")
         
         #expect(FilePermissions(mask: 0o643).formatted(.filePermissions(.octal)) == "643")
+        #expect(FilePermissions(mask: 0o064).formatted(.filePermissions(.octal)) == "064")
+        #expect(FilePermissions(mask: 0o4755).formatted(.filePermissions(.symbolic)) == "-rwsr-xr-x")
+        #expect(FilePermissions(mask: 0o4755).formatted(.filePermissions(.full)) == "4755 (-rwsr-xr-x)")
         #expect(FilePermissions(mask: 0o643).formatted() == "643 (-rw-r---wx)")
         #expect(FilePermissions(mask: 0o643).formatted(.filePermissions) == "643 (-rw-r---wx)")
     }
@@ -60,5 +70,12 @@ struct FilePermissionTests {
         
         #expect(permissions.user.contains(.execute))
         #expect(permissions.mask == 0o744)
+        
+        var specialPermissions = FilePermissions(mask: 0o4644)
+        specialPermissions.user.insert(.execute)
+        
+        #expect(specialPermissions.user.contains(.execute))
+        #expect(specialPermissions.mask == 0o4744)
+        #expect(specialPermissions.symbolic == "rwsr--r--")
     }
 }

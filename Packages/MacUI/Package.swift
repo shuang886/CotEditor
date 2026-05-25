@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.3
 
 import PackageDescription
 
@@ -6,7 +6,7 @@ let package = Package(
     name: "MacUI",
     defaultLocalization: "en",
     platforms: [
-        .macOS(.v15),
+        .macOS(.v26),
     ],
     products: [
         .library(name: "MacUI", targets: [
@@ -23,7 +23,7 @@ let package = Package(
         .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", from: Version(0, 62, 0)),
     ],
     targets: [
-        .target(name: "ControlUI", dependencies: ["EditorCore"], swiftSettings: [
+        .target(name: "ControlUI", dependencies: ["EditorCore"], resources: [.process("Assets.xcassets")], swiftSettings: [
             .defaultIsolation(MainActor.self),
         ]),
         
@@ -38,16 +38,14 @@ let package = Package(
 
 
 for target in package.targets {
-    target.plugins = [
+    target.plugins = (target.plugins ?? []) + [
         .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
     ]
-    target.swiftSettings = [
+    target.swiftSettings = (target.swiftSettings ?? []) + [
         .strictMemorySafety(),
-        
         .enableUpcomingFeature("ExistentialAny"),
         .enableUpcomingFeature("InternalImportsByDefault"),
         .enableUpcomingFeature("MemberImportVisibility"),
-        
         .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
         .enableUpcomingFeature("InferIsolatedConformances"),
     ]

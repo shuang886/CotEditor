@@ -32,8 +32,9 @@ struct MultipleReplaceView: NSViewControllerRepresentable {
     
     typealias NSViewControllerType = MultipleReplaceViewController
     
+    var settingName: String?
     @Binding var setting: MultipleReplace
-    var updateHandler: (MultipleReplace) -> Void
+    var updateHandler: (String, MultipleReplace) -> Void
     
     
     func makeNSViewController(context: Context) -> MultipleReplaceViewController {
@@ -46,7 +47,7 @@ struct MultipleReplaceView: NSViewControllerRepresentable {
     
     func updateNSViewController(_ nsViewController: MultipleReplaceViewController, context: Context) {
         
-        nsViewController.change(setting: self.setting)
+        nsViewController.change(settingName: self.settingName, setting: self.setting)
     }
 }
 
@@ -58,10 +59,12 @@ final class MultipleReplaceViewController: NSViewController, NSUserInterfaceVali
     
     // MARK: Private Properties
     
-    private let updateHandler: (MultipleReplace) -> Void
+    private let updateHandler: (String, MultipleReplace) -> Void
+    private var settingName: String?
     
     private var definition = MultipleReplace()
     private lazy var updateNotificationDebouncer = Debouncer(delay: .seconds(1)) { [weak self] in self?.notifyUpdate() }
+    private var settingUpdateObserver: NotificationCenter.ObservationToken?
     
     @objc private dynamic var hasInvalidSetting = false
     @objc private dynamic var resultMessage: String?
@@ -72,7 +75,7 @@ final class MultipleReplaceViewController: NSViewController, NSUserInterfaceVali
     
     // MARK: Lifecycle
     
-    required init?(coder: NSCoder, updateHandler: @escaping (MultipleReplace) -> Void) {
+    required init?(coder: NSCoder, updateHandler: @escaping (String, MultipleReplace) -> Void) {
         
         self.updateHandler = updateHandler
         
@@ -98,6 +101,10 @@ final class MultipleReplaceViewController: NSViewController, NSUserInterfaceVali
         
         self.addRemoveButton?.setToolTip(String(localized: "Action.add.tooltip", defaultValue: "Add new item"), forSegment: 0)
         self.addRemoveButton?.setToolTip(String(localized: "Action.delete.tooltip", defaultValue: "Delete selected items"), forSegment: 1)
+        
+        self.settingUpdateObserver = NotificationCenter.default.addObserver(of: ReplacementManager.shared, for: DidManagerUpdateSettingMessage.self) { [weak self] message in
+            self?.didUpdateSetting(message.change)
+        }
     }
     
     
@@ -247,11 +254,21 @@ final class MultipleReplaceViewController: NSViewController, NSUserInterfaceVali
     
     /// Sets another replacement definition.
     ///
-    /// - Parameter setting: The setting to replace.
-    func change(setting: MultipleReplace) {
+    /// - Parameters:
+    ///   - settingName: The name of the setting to replace.
+    ///   - setting: The setting to replace.
+    func change(settingName: String?, setting: MultipleReplace) {
         
-        guard setting != self.definition else { return }
+        guard settingName != self.settingName || setting != self.definition else { return }
         
+        self.endEditing()
+        if settingName != self.settingName {
+            self.updateNotificationDebouncer.fire()
+        } else {
+            self.updateNotificationDebouncer.cancel()
+        }
+        
+        self.settingName = settingName
         self.definition = setting
         self.hasInvalidSetting = false
         self.resultMessage = nil
@@ -278,7 +295,35 @@ final class MultipleReplaceViewController: NSViewController, NSUserInterfaceVali
     /// Notifies the update to delegate.
     private func notifyUpdate() {
         
-        self.updateHandler(self.definition)
+        guard let settingName = self.settingName else { return }
+        
+        self.updateHandler(settingName, self.definition)
+    }
+    
+    
+    /// Adjusts pending updates when the current setting changes.
+    ///
+    /// - Parameter change: The setting change to apply.
+    private func didUpdateSetting(_ change: SettingChange) {
+        
+        switch change {
+            case .updated(from: let oldName, to: let newName) where oldName == self.settingName:
+                if oldName == newName {
+                    self.updateNotificationDebouncer.cancel()
+                } else {
+                    self.endEditing()
+                    self.settingName = newName
+                    self.updateNotificationDebouncer.fire()
+                }
+                
+            case .removed(let name) where name == self.settingName:
+                self.endEditing()
+                self.settingName = nil
+                self.updateNotificationDebouncer.cancel()
+                
+            default:
+                break
+        }
     }
     
     

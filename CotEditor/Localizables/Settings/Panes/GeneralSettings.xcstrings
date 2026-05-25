@@ -18,7 +18,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eine Systemfunktion, die deine Dateien während der Bearbeitung automatisch überschreibt. Selbst wenn nicht aktiviert, erstellt CotEditor verdeckt Backups für unerwartete Beenden."
+            "value" : "Eine Systemfunktion, die deine Dateien während der Bearbeitung automatisch überschreibt. Auch wenn diese Funktion deaktiviert ist, erstellt CotEditor im Hintergrund Backups für den Fall, dass es unerwartet beendet wird."
           }
         },
         "en-GB" : {
@@ -42,7 +42,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa funzione sovrascrive automaticamente i tuoi file durante la lavorazione. Anche se disabilitata, CotEditor crea dei backup in caso di chiusura inaspettata."
+            "value" : "Funzione di sistema che sovrascrive automaticamente i file durante la modifica. Anche se disattivata, CotEditor crea di nascosto un backup in caso di chiusura imprevista."
           }
         },
         "ja" : {
@@ -480,7 +480,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il link simbolico `cot` attuale potrebbe puntare ad un percorso non valido."
+            "value" : "Il link simbolico `cot` attuale potrebbe puntare a un percorso non valido."
           }
         },
         "ja" : {
@@ -775,7 +775,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CotEditors Version behalten"
+            "value" : "CotEditor-Version behalten"
           }
         },
         "en" : {
@@ -1544,7 +1544,7 @@
         "en-GB" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Learn More"
+            "value" : "Learn More…"
           }
         },
         "es" : {
@@ -1989,7 +1989,7 @@
         "en-GB" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "translated"
+            "value" : "The change will be applied first on the next launch."
           }
         },
         "es" : {
@@ -2239,7 +2239,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "”開く”ダイアログを表示"
+            "value" : "“開く”ダイアログを表示"
           }
         },
         "ko" : {
@@ -2534,7 +2534,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beim Verwenden einer Vorabversion werden ungeachtet dieser Einstellung immer nach neuen Vorabversionen gesucht."
+            "value" : "Beim Verwenden einer Vorabversion wird ungeachtet dieser Einstellung immer nach neuen Vorabversionen gesucht."
           }
         },
         "en-GB" : {
@@ -2959,7 +2959,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folgenden Warnungen ausschalten:"
+            "value" : "Folgende Warnungen ausschalten:"
           }
         },
         "en-GB" : {
@@ -3383,7 +3383,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit dem „cot“-Kommandozeilenwerkzeug kannst du CotEditor von der Kommandozeile aus aktivieren und es Dateien öffnen lassen."
+            "value" : "Mit dem „cot“-Kommandozeilenwerkzeug kannst du CotEditor von der Kommandozeile aus starten und Dateien öffnen."
           }
         },
         "en-GB" : {

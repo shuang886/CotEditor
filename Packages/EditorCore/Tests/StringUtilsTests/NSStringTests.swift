@@ -53,6 +53,7 @@ struct NSStringTests {
         #expect(("0🇦🇦00" as NSString).index(before: 2) == 1)
         #expect(("0🇦🇦00" as NSString).index(before: 5) == 1)
         #expect(("0🇦🇦00" as NSString).index(before: 6) == 5)
+        #expect(("[\u{200C}\u{200D}]" as NSString).index(before: 1) == 0)
         
         #expect(("0\r\n0" as NSString).index(before: 3) == 1)
         #expect(("0\r\n0" as NSString).index(before: 2) == 1)
@@ -181,6 +182,12 @@ struct NSStringTests {
         let string2 = "aAaA" as NSString
         #expect(string2.ranges(of: "aa", options: .caseInsensitive) == [NSRange(0..<2), NSRange(2..<4)])
         #expect(string2.ranges(of: "aa", options: .caseInsensitive, range: NSRange(1..<4)) == [NSRange(1..<3)])
+        
+        let string3 = "abc" as NSString
+        #expect(string3.ranges(of: "(?=b)", options: .regularExpression) == [NSRange(1..<1)])
+        #expect(string3.ranges(of: "$", options: .regularExpression) == [NSRange(3..<3)])
+        
+        #expect(string.ranges(of: "").isEmpty)
     }
     
     
@@ -194,7 +201,7 @@ struct NSStringTests {
     }
     
     
-    @Test(arguments: [0x000A, 0x000B, 0x000C, 0x000D, 0x0085, 0x2028, 0x2029])
+    @Test(arguments: [0xA, 0xB, 0xC, 0xD, 0x85, 0x2028, 0x2029])
     func unicharIsNewline(char: UInt16) throws {
         
         let scalar = try #require(Unicode.Scalar(char))

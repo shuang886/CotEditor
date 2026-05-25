@@ -39,6 +39,12 @@ private extension NSAttributedString.Key {
 }
 
 
+extension NotificationCenter.MessageIdentifier where Self == NotificationCenter.BaseMessageIdentifier<EditorTextView.DidLiveChangeSelectionMessage> {
+    
+    static var didLiveChangeSelection: Self { .init() }
+}
+
+
 // MARK: -
 
 final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEditing {
@@ -55,15 +61,13 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
         
         typealias Subject = EditorTextView
         
-        static let name = Notification.Name("TextViewDidBecomeFirstResponder")
+        var subjectIdentifier: ObjectIdentifier
     }
     
     
     struct DidLiveChangeSelectionMessage: NotificationCenter.MainActorMessage {
         
         typealias Subject = EditorTextView
-        
-        static let name = Notification.Name("TextViewDidLiveChangeSelection")
     }
     
     
@@ -132,6 +136,8 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
     
     var customSurroundPair: Pair<String>?
     
+    var accessibilityHelpProvider: (() -> String?)?
+    
     
     // MARK: Private Properties
     
@@ -175,6 +181,9 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
         
         let textContainer = TextContainer()
         textContainer.widthTracksTextView = true
+        // -> Avoid the default finite container height clipping large wrapped layouts (2026-05, macOS 26.4).
+        textContainer.size.height = .greatestFiniteMagnitude
+        
         let layoutManager = LayoutManager(lineEndingScanner: lineEndingScanner)
         textStorage.addLayoutManager(layoutManager)
         layoutManager.addTextContainer(textContainer)
@@ -274,12 +283,17 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
     }
     
     
+    override func accessibilityHelp() -> String? {
+        
+        self.accessibilityHelpProvider?() ?? super.accessibilityHelp()
+    }
+    
+    
     override func becomeFirstResponder() -> Bool {
         
         guard super.becomeFirstResponder() else { return false }
         
-        // post notification about becoming the first responder
-        NotificationCenter.default.post(name: DidBecomeFirstResponderMessage.name, object: self)
+        NotificationCenter.default.post(DidBecomeFirstResponderMessage(subjectIdentifier: ObjectIdentifier(self)), subject: self)
         
         defer {
             self.invalidateInsertionIndicatorDisplayMode()
@@ -323,6 +337,7 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
             }
             
             // observe key window state for insertion points drawing and automatic period substitution
+            self.keyStateObservers.forEach(NotificationCenter.default.removeObserver)
             self.keyStateObservers = [
                 NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [unowned self] _ in
                     MainActor.assumeIsolated { [unowned self] in
@@ -720,11 +735,11 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
             }
         }
         
-        // send notification on the next run loop
+        // send notification asynchronously
         // -> `self.selectedRange` may not be updated yet at this timing.
-        DispatchQueue.main.async { [weak self] in
-            guard self?.rangesForUserTextChange ?? self?.selectedRanges != currentRanges else { return }
-            NotificationCenter.default.post(name: DidLiveChangeSelectionMessage.name, object: self)
+        Task { @MainActor [weak self] in
+            guard let self, self.rangesForUserTextChange ?? self.selectedRanges != currentRanges else { return }
+            NotificationCenter.default.post(DidLiveChangeSelectionMessage(), subject: self)
         }
     }
     
@@ -1035,15 +1050,28 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
            let ranges = self.rangesForUserTextChange?.map(\.rangeValue),
            ranges.count > 1
         {
-            let lines = string.components(separatedBy: .newlines)
-            let multipleTexts: [String] = groupCounts
+            let lines = string.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+            
+            // ignore malformed multiple-selection metadata from the pasteboard
+            guard groupCounts.allSatisfy({ 0 < $0 && $0 <= lines.count }) else {
+                return super.readSelection(from: pboard, type: type)
+            }
+            
+            let groupRanges: [Range<Int>] = groupCounts
                 .reduce(into: [Range<Int>]()) { groupRanges, groupCount in
+                    let location = groupRanges.last?.upperBound ?? 0
                     if groupRanges.count >= ranges.count, let last = groupRanges.last {
                         groupRanges[groupRanges.endIndex - 1] = last.lowerBound..<(last.upperBound + groupCount)
                     } else {
-                        groupRanges.append(groupRanges.count..<(groupRanges.count + groupCount))
+                        groupRanges.append(location..<(location + groupCount))
                     }
                 }
+            
+            guard groupRanges.last?.upperBound == lines.endIndex else {
+                return super.readSelection(from: pboard, type: type)
+            }
+            
+            let multipleTexts: [String] = groupRanges
                 .map { lines[$0].joined(separator: self.lineEnding.string) }
             let blanks = [String](repeating: "", count: ranges.count - multipleTexts.count)
             let strings = multipleTexts + blanks
@@ -1143,7 +1171,7 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
                             if menuItem.keyEquivalent == NSEvent.SpecialKey.leftArrow.string {
                                 menuItem.keyEquivalent = NSEvent.SpecialKey.downArrow.string
                             }
-                            menuItem.title = String(localized: "Select Column down", table: "MainMenu")
+                            menuItem.title = String(localized: "Select Column Down", table: "MainMenu")
                         case .vertical:
                             if menuItem.keyEquivalent == NSEvent.SpecialKey.downArrow.string {
                                 menuItem.keyEquivalent = NSEvent.SpecialKey.leftArrow.string
@@ -1419,6 +1447,13 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
         //    the color in the Color panel (2025-11, macOS 26.2)
         if self.textColor != theme.text.color {
             self.textColor = theme.text.color
+            
+            // workaround for a TextKit issue where textColor update can leave
+            // LastResort fallback glyphs after emoji tag sequences (2026-05, macOS 26.4).
+            if let font {
+                self.textStorage?.addAttribute(.font, value: font, range: self.string.nsRange)
+            }
+            
         } else if self.typingAttributes[.foregroundColor] as? NSColor != theme.text.color {
             // for case when the textView was created for sub split editor
             self.typingAttributes[.foregroundColor] = theme.text.color
@@ -1549,6 +1584,7 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
     private func highlightInstances() async throws {
         
         guard
+            self.highlightsSelectionInstance,
             !self.string.isEmpty,  // important to avoid crash after closing editor
             !self.selectedRange.isEmpty,
             !self.hasMarkedText(),
@@ -1568,7 +1604,14 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
             task.cancel()
         }
         
+        try Task.checkCancellation()
+        
         guard
+            self.highlightsSelectionInstance,
+            self.selectedRange == selectedRange,
+            !self.hasMarkedText(),
+            self.insertionLocations.isEmpty,
+            self.selectedRanges.count == 1,
             let lower = ranges.first?.lowerBound,
             let upper = ranges.last?.upperBound
         else { return }
@@ -1588,6 +1631,8 @@ final class EditorTextView: NSTextView, CurrentLineHighlighting, MultiCursorEdit
     private func invalidateInstanceHighlights() {
         
         if !self.highlightsSelectionInstance {
+            self.instanceHighlightTask?.cancel()
+            self.instanceHighlightTask = nil
             self.layoutManager?.removeTemporaryAttribute(.roundedBackgroundColor, forCharacterRange: self.string.range)
         }
     }
@@ -1652,11 +1697,11 @@ extension EditorTextView {
         guard !self.string.isEmpty else { return range }
         
         let firstSyntaxLetters = self.syntaxCompletionWords.compactMap(\.text.unicodeScalars.first)
-        let firstLetterSet = CharacterSet(firstSyntaxLetters).union(.letters).union(.init(["_"]))
+        let wordCompletionSet = CharacterSet(firstSyntaxLetters).union(.alphanumerics).union(.init(["_"]))
         
         // expand range until hitting a character that isn't in the word completion candidates
         let searchRange = NSRange(location: 0, length: range.upperBound)
-        let invalidRange = (self.string as NSString).rangeOfCharacter(from: firstLetterSet.inverted, options: .backwards, range: searchRange)
+        let invalidRange = (self.string as NSString).rangeOfCharacter(from: wordCompletionSet.inverted, options: .backwards, range: searchRange)
         
         guard !invalidRange.isNotFound else { return range }
         
@@ -1786,6 +1831,8 @@ extension EditorTextView {
         
         // abort if:
         guard
+            self.isAutomaticCompletionEnabled,
+            self.rangeForUserCompletion.length >= self.minimumAutomaticCompletionLength,
             !self.hasMarkedText(),  // input is not specified (for Japanese input)
             self.selectedRange.isEmpty,  // selected
             let lastCharacter = self.string.character(before: self.selectedRange), !CharacterSet.whitespacesAndNewlines.contains(lastCharacter)  // previous character is blank

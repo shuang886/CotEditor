@@ -25,7 +25,6 @@
 //
 
 import Foundation
-import Combine
 import AppKit.NSTextStorage
 import OSLog
 import StringUtils
@@ -38,7 +37,7 @@ extension NSAttributedString.Key {
 }
 
 
-@MainActor final class SyntaxController {
+@MainActor @Observable final class SyntaxController {
     
     // MARK: Public Properties
     
@@ -47,7 +46,7 @@ extension NSAttributedString.Key {
     
     var theme: Theme?
     
-    @Published private(set) var outlineItems: [OutlineItem]?
+    private(set) var outlineItems: [OutlineItem]?
     
     
     // MARK: Private Properties
@@ -292,9 +291,16 @@ extension NSAttributedString.Key {
         let string = self.textStorage.string.immutable
         let result = try await parser.parseHighlights(in: string, range: highlightRange)
         
-        if let result {
-            self.textStorage.apply(highlights: result.highlights, theme: self.theme, in: result.updateRange)
+        try Task.checkCancellation()
+        
+        guard let result else { return }
+        
+        guard result.updateRange.upperBound <= self.textStorage.length else {
+            Logger.app.debug("Invalid range \(result.updateRange.description) for \(self.textStorage.length) length textStorage is passed to \(#function)")
+            return
         }
+        
+        self.textStorage.apply(highlights: result.highlights, theme: self.theme, in: result.updateRange)
     }
     
     
@@ -320,12 +326,16 @@ extension NSAttributedString.Key {
             }
             // Highlight parsing is expected to run first to provide accurate invalidation ranges.
             try? await self?.highlightParseTask?.value
+            try Task.checkCancellation()
             
             guard let self else { return }
             
             self.outlineItems = nil
             let string = self.textStorage.string.immutable
-            self.outlineItems = try await parser.parseOutline(in: string)
+            let outlineItems = try await parser.parseOutline(in: string)
+            try Task.checkCancellation()
+            
+            self.outlineItems = outlineItems
         }
     }
 }

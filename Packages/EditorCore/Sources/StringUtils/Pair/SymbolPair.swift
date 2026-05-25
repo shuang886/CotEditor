@@ -24,8 +24,6 @@
 //  limitations under the License.
 //
 
-import Foundation
-
 public typealias SymbolPair = Pair<Character>
 
 public extension Pair where T == Character {
@@ -59,7 +57,7 @@ public extension Pair.PairIndex {
 }
 
 
-public extension StringProtocol {
+public extension String {
     
     /// Finds the range enclosed by one of given symbol pairs.
     ///
@@ -70,7 +68,7 @@ public extension StringProtocol {
     /// - Returns: The range of the enclosing symbol pair, or `nil` if not found.
     func rangeOfEnclosingSymbolPair(at range: Range<Index>, candidates: [SymbolPair], escapeCharacter: Character? = nil) -> Range<Index>? {
         
-        SymbolPairScanner(string: String(self), candidates: candidates, baseRange: range, escapeCharacter: escapeCharacter)
+        SymbolPairScanner(string: self, candidates: candidates, baseRange: range, escapeCharacter: escapeCharacter)
             .scan()
     }
     
@@ -82,6 +80,7 @@ public extension StringProtocol {
     ///   - candidates: Symbol pairs to find.
     ///   - pairToIgnore: The symbol pair in which symbol characters should be ignored.
     ///   - escapeCharacter: The escape character, or `nil` for no escape.
+    /// - Returns: The range enclosed by the symbol pair, or `nil` if not found.
     func rangeOfSymbolPair(at index: Index, candidates: [SymbolPair], ignoring pairToIgnore: SymbolPair? = nil, escapeCharacter: Character? = nil) -> ClosedRange<Index>? {
         
         guard let pairIndex = self.indexOfSymbolPair(at: index, candidates: candidates, ignoring: pairToIgnore, escapeCharacter: escapeCharacter) else { return nil }
@@ -390,11 +389,12 @@ private final class SymbolPairScanner {
         
         var index = self.scanningRange.lowerBound
         var nestDepths: [SymbolPair: Int] = [:]
+        let candidates = self.scanningPair.map { [$0] } ?? self.candidates
         
         for character in self.string[..<index].reversed() {
             index = self.string.index(before: index)
             
-            if let pair = self.candidates.first(where: { $0.begin == character }) {
+            if let pair = candidates.first(where: { $0.begin == character }) {
                 if let escapeCharacter, self.string.isEscaped(at: index, by: escapeCharacter) { continue }
                 
                 if nestDepths[pair, default: 0] > 0 {
@@ -406,7 +406,7 @@ private final class SymbolPairScanner {
                     return
                 }
                 
-            } else if let pair = self.candidates.first(where: { $0.end == character }) {
+            } else if let pair = candidates.first(where: { $0.end == character }) {
                 if let escapeCharacter, self.string.isEscaped(at: index, by: escapeCharacter) { continue }
                 
                 nestDepths[pair, default: 0] += 1

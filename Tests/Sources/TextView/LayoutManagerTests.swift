@@ -1,14 +1,15 @@
 //
-//  NSTextView.swift
+//  LayoutManagerTests.swift
+//  Tests
 //
 //  CotEditor
 //  https://coteditor.com
 //
-//  Created by 1024jp on 2018-05-11.
+//  Created by 1024jp on 2026-05-08.
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2018-2025 1024jp
+//  © 2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -24,13 +25,18 @@
 //
 
 import AppKit
+import Testing
+import LineEnding
+@testable import CotEditor
 
-extension NSTextView {
+struct LayoutManagerTests {
     
-    /// The root view controller.
-    @available(macOS, deprecated: 26, message: "Use `window.beginSheet(_:)` instead.")
-    final var viewControllerForSheet: NSViewController? {
+    @Test func noLineBreakAfterLeadingIndentAtDocumentStart() {
         
-        self.window?.windowController?.contentViewController
+        let textStorage = NSTextStorage(string: "    dog")
+        let layoutManager = LayoutManager(lineEndingScanner: LineEndingScanner(textStorage: textStorage, lineEnding: .lf))
+        textStorage.addLayoutManager(layoutManager)
+        
+        #expect(!layoutManager.layoutManager(layoutManager, shouldBreakLineByWordBeforeCharacterAt: 4))
     }
 }

@@ -25,9 +25,9 @@
 //
 
 public import Foundation
+import OSLog
 import UniformTypeIdentifiers
 import Yams
-import StringUtils
 
 public extension Syntax {
     
@@ -56,6 +56,7 @@ public extension Syntax {
             do {
                 try self.migrate(fileURL: url, to: destinationURL, deletingOriginal: deletingOriginal)
             } catch {
+                Logger.syntaxFormat.error("Failed migrating syntax definition \"\(url.lastPathComponent)\": \(error)")
                 continue
             }
             count += 1
@@ -105,6 +106,12 @@ public extension Syntax {
         
         self = try YAMLDecoder().decode(Syntax.self, from: yamlData)
     }
+}
+
+
+private extension Logger {
+    
+    static let syntaxFormat = Logger(subsystem: "com.coteditor.CotEditor", category: "syntax-format")
 }
 
 
@@ -300,11 +307,4 @@ private extension Syntax.Comment {
             self.blocks = [.init(begin: blockBegin, end: blockEnd)]
         }
     }
-}
-
-
-private extension String {
-    
-    /// Constant string representing a separator.
-    static let separator = "-"
 }

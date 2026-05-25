@@ -102,7 +102,7 @@ public extension String {
     
     /// Computes auto-indentation strings and insertion positions for newline insertion.
     ///
-    /// - Note: Ranges without a line ending immediately before them are ignored.
+    /// - Precondition: Each location in `selectedRanges` must be immediately after a line ending.
     ///
     /// - Parameters:
     ///   - style: The indentation style to apply.
@@ -240,8 +240,6 @@ extension NSString {
         
         let range = NSRange(0..<location)
         let options: NSString.CompareOptions = ignoreCase ? .caseInsensitive : []
-        let empty: NSString.CompareOptions = []
-        assert(empty.union([.anchored, .backwards]) == [.anchored, .backwards])
         let foundRange = if token.first?.isLetter == true {
             self.range(of: "(?<![A-Za-z0-9_])\(NSRegularExpression.escapedPattern(for: token))$", options: options.union(.regularExpression), range: range)
         } else {
@@ -265,8 +263,6 @@ extension NSString {
         
         let range = NSRange(location..<self.length)
         let options: NSString.CompareOptions = ignoreCase ? .caseInsensitive : []
-        let empty: NSString.CompareOptions = []
-        assert(empty.union(.anchored) == [.anchored])
         let foundRange = if token.last?.isLetter == true {
             self.range(of: "^\(NSRegularExpression.escapedPattern(for: token))(?![A-Za-z0-9_])", options: options.union(.regularExpression), range: range)
         } else {

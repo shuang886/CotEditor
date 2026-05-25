@@ -47,6 +47,28 @@ struct MultipleReplaceTests {
     }
     
     
+    @Test func equalityDistinguishesUnicodeEquivalentReplacementStrings() {
+        
+        let findString = MultipleReplace(replacements: [
+            .init(findString: "\u{00B7}"),
+        ])
+        let unicodeEquivalentFindString = MultipleReplace(replacements: [
+            .init(findString: "\u{0387}"),
+        ])
+        
+        #expect(findString != unicodeEquivalentFindString)
+        
+        let replacementString = MultipleReplace(replacements: [
+            .init(findString: "x", replacementString: "\u{00B7}"),
+        ])
+        let unicodeEquivalentReplacementString = MultipleReplace(replacements: [
+            .init(findString: "x", replacementString: "\u{0387}"),
+        ])
+        
+        #expect(replacementString != unicodeEquivalentReplacementString)
+    }
+    
+    
     @Test func replacementValidateThrows() {
         
         #expect(throws: TextFind.Error.emptyFindString) {
@@ -97,6 +119,18 @@ struct MultipleReplaceTests {
         let result = try definition.replace(string: string, ranges: [NSRange(0..<0)], inSelection: false)
         
         #expect(result.string == "cats dog dog")
+    }
+    
+    
+    @Test func replaceTextualCanonicallyEquivalentCharacter() throws {
+        
+        let definition = MultipleReplace(replacements: [
+            .init(findString: "\u{00B7}", replacementString: "\u{0387}"),
+        ])
+        
+        let result = try definition.replace(string: "\u{00B7}", ranges: [NSRange(0..<0)], inSelection: false)
+        
+        #expect(result.string.unicodeScalars.map(\.value) == [0x0387])
     }
     
     

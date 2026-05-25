@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2024-2025 1024jp
+//  © 2024-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ struct IssueReport {
     private var description: String {
         
         String(localized: "IssueReport.description",
-               defaultValue: "Fill in the following template, then post it on \(Self.issueLink) or send it to \(Self.mail). Please note that the content of your email may be shared on the Issue page. Please write your message in either English or Japanese.",
+               defaultValue: "Fill in the following template, then post it on \(Self.issueLink) or send it to \(Self.mail). Note that the content of your email may be shared on the Issue page. Please write your message in either English or Japanese.",
                comment: "%1$@ is a link to a web page and %2$@ is an e-mail")
     }
     
@@ -95,6 +95,8 @@ private extension IssueReport {
         
         
         /// Returns the markdown heading string.
+        ///
+        /// - Returns: The markdown heading string.
         func display() -> String {
             
             (Locale.current.language.languageCode == .english)

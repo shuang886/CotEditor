@@ -24,11 +24,10 @@
 //
 
 import Foundation
-import Combine
 import TextFind
 import URLUtils
 
-@MainActor final class ReplacementManager: SettingFileManaging {
+@MainActor @Observable final class ReplacementManager: SettingFileManaging {
     
     typealias Setting = MultipleReplace
     
@@ -45,7 +44,7 @@ import URLUtils
     let reservedNames: [String] = []
     
     let bundledSettingNames: [String] = []
-    @Published var settingNames: [String] = []
+    var settingNames: [String] = []
     var cachedSettings: [String: Setting] = [:]
     
     
@@ -82,7 +81,7 @@ import URLUtils
     /// - Returns: The name of the created setting.
     @discardableResult func createUntitledSetting() throws -> String {
         
-        let name = String(localized: "Untitled", comment: "initial setting filename")
+        let name = String(localized: "Untitled", comment: "default name")
             .appendingUniqueNumber(in: self.settingNames)
         
         try self.save(setting: Setting(), name: name)
@@ -94,6 +93,8 @@ import URLUtils
     // MARK: Setting File Managing
     
     /// Builds the list of available settings by considering both user and bundled settings.
+    ///
+    /// - Returns: Available setting names.
     nonisolated func listAvailableSettings() -> [String] {
         
         self.userSettingFileURLs

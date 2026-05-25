@@ -9,7 +9,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2018-2024 1024jp
+//  © 2018-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -55,6 +55,21 @@ struct LineSortTests {
     }
     
     
+    @Test func sortLinesWithoutKeys() {
+        
+        var pattern = RegularExpressionSortPattern()
+        pattern.searchPattern = "^x"
+        
+        let lines = """
+            b
+            a
+            c
+            """
+        
+        #expect(pattern.sort(lines) == lines)
+    }
+    
+    
     @Test func regexSort() throws {
         
         var pattern = RegularExpressionSortPattern()
@@ -80,6 +95,15 @@ struct LineSortTests {
         pattern.searchPattern = "(a)(b)c"
         try pattern.validate()
         #expect(pattern.numberOfCaptureGroups == 2)
+        
+        pattern.usesCaptureGroup = true
+        pattern.group = -1
+        #expect(pattern.range(for: "abc") == nil)
+        #expect(throws: SortPatternError.invalidRegularExpressionPattern) { try pattern.validate() }
+        
+        pattern.group = 3
+        #expect(pattern.range(for: "abc") == nil)
+        #expect(throws: SortPatternError.invalidRegularExpressionPattern) { try pattern.validate() }
     }
     
     
@@ -126,6 +150,33 @@ struct LineSortTests {
         options.descending = false
         options.keepsFirstLine = true
         #expect(pattern.sort(numbers, options: options) == "3\n1\n12")
+    }
+    
+    
+    @Test func sortCRLF() {
+        
+        let pattern = EntireLineSortPattern()
+        
+        #expect(pattern.sort("b\r\na") == "a\r\nb")
+        
+        var options = SortOptions()
+        options.keepsFirstLine = true
+        #expect(pattern.sort("header\r\nb\r\na", options: options) == "header\r\na\r\nb")
+    }
+    
+    
+    @Test func sortMixedLineEndings() {
+        
+        let pattern = EntireLineSortPattern()
+        
+        #expect(pattern.sort("b\r\na\nc") == "a\nb\r\nc")
+        #expect(pattern.sort("b\r\na\n") == "a\nb\r\n")
+        #expect(pattern.sort("c\r\nb\na", baseLineEnding: "\r") == "a\rb\nc")
+        
+        var options = SortOptions()
+        options.descending = true
+        #expect(pattern.sort("b\r\na\nc", options: options) == "c\r\nb\r\na")
+        #expect(pattern.sort("a\r\nb\n", options: options) == "b\na\r\n")
     }
     
     

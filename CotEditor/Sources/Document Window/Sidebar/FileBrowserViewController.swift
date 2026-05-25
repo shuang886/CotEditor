@@ -29,6 +29,7 @@ import QuickLookUI
 import Combine
 import AudioToolbox
 import Defaults
+import DocumentFile
 import ControlUI
 import URLUtils
 
@@ -46,6 +47,9 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
     private var expandedItems: [Any]?
     
     private var expandingNodes: [FileNode: [FileNode]] = [:]
+    
+    private var contextMenuSession = 0
+    private var isContextMenuShown = false
     
     private var filterTask: Task<Void, any Error>?
     private var defaultObservers: Set<AnyCancellable> = []
@@ -76,13 +80,15 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         let outlineView = NSOutlineView()
         outlineView.headerView = nil
         outlineView.addTableColumn(NSTableColumn())
-        outlineView.setAccessibilityLabel(String(localized: "File Browser", table: "Document", comment: "accessibility label"))
+        outlineView.setAccessibilityLabel(String(localized: "Files", table: "Document", comment: "accessibility label"))
         outlineView.target = self
         outlineView.doubleAction = #selector(outlineViewDoubleClicked)
         
         let scrollView = NSScrollView()
         scrollView.documentView = outlineView
         scrollView.hasVerticalScroller = true
+        scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.contentInsets.top = 8
         
         // workaround the issue where the tableCellViews don't follow the outlineView's width
         // when the scroller knob is shown (2025-09, macOS 26, FB20309978)
@@ -117,16 +123,14 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
                        systemImage: "folder.badge.plus",
                        action: #selector(addFolder), target: self),
         ]
-        if #unavailable(macOS 26) {
-            addButton.menu!.items[0].image = NSImage(systemSymbolName: "plus", accessibilityDescription: nil)
-        }
         addButton.setAccessibilityLabel(String(localized: "Action.add.label", defaultValue: "Add"))
         
-        let filterField = if #available(macOS 26, *) { FilterSearchField() } else { LegacyFilterSearchField() }
+        let filterField = FilterSearchField()
         filterField.focusRingType = .none
         filterField.target = self
         filterField.action = #selector(filterTextDidChange)
         filterField.recentsAutosaveName = "FileBrowserSearch"
+        filterField.setAccessibilityLabel(String(localized: "File browser filter", table: "Document", comment: "accessibility label"))
         
         let filterProgressIndicator = NSProgressIndicator()
         filterProgressIndicator.style = .spinning
@@ -134,8 +138,7 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         filterProgressIndicator.controlSize = .small
         filterProgressIndicator.setAccessibilityLabel(String(localized: "Searching in folder…", table: "Document"))
         
-        let footerView = isLiquidGlass ? NSView() : NSVisualEffectView()
-        (footerView as? NSVisualEffectView)?.material = .sidebar
+        let footerView = NSView()
         addButton.translatesAutoresizingMaskIntoConstraints = false
         filterField.translatesAutoresizingMaskIntoConstraints = false
         filterProgressIndicator.translatesAutoresizingMaskIntoConstraints = false
@@ -145,10 +148,10 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         
         NSLayoutConstraint.activate([
             addButton.centerYAnchor.constraint(equalTo: footerView.centerYAnchor),
-            addButton.leadingAnchor.constraint(equalTo: footerView.leadingAnchor, constant: isLiquidGlass ? 7 : 6),
+            addButton.leadingAnchor.constraint(equalTo: footerView.leadingAnchor, constant: 7),
             filterField.centerYAnchor.constraint(equalTo: footerView.centerYAnchor),
             filterField.leadingAnchor.constraint(equalToSystemSpacingAfter: addButton.trailingAnchor, multiplier: 0.5),
-            filterField.trailingAnchor.constraint(equalTo: footerView.trailingAnchor, constant: isLiquidGlass ? -7 : -5),
+            filterField.trailingAnchor.constraint(equalTo: footerView.trailingAnchor, constant: -7),
             filterProgressIndicator.centerYAnchor.constraint(equalTo: filterField.centerYAnchor),
             filterProgressIndicator.trailingAnchor.constraint(equalTo: filterField.trailingAnchor, constant: -24),
         ])
@@ -162,11 +165,12 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         self.view.addSubview(bottomSeparator)
         self.view.addSubview(footerView)
         
-        let footerHeight: CGFloat = isLiquidGlass ? 36 : 33
+        let footerHeight: CGFloat = 36
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: self.view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomSeparator.topAnchor),
             bottomSeparator.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
             bottomSeparator.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
             bottomSeparator.bottomAnchor.constraint(equalTo: footerView.topAnchor),
@@ -175,13 +179,6 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
             footerView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
             footerView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
         ])
-        
-        if #available(macOS 26, *) {
-            scrollView.bottomAnchor.constraint(equalTo: bottomSeparator.topAnchor).isActive = true
-        } else {
-            scrollView.additionalSafeAreaInsets.bottom = footerHeight
-            scrollView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor).isActive = true
-        }
         
         self.outlineView = outlineView
         self.bottomSeparator = bottomSeparator
@@ -205,6 +202,7 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         self.outlineView.setDraggingSourceOperationMask([.copy, .move, .delete], forLocal: false)
         
         let contextMenu = NSMenu()
+        contextMenu.delegate = self
         contextMenu.items = [
             NSMenuItem(title: String(localized: "Show in Finder", table: "Document", comment: "menu item label"),
                        systemImage: "finder",
@@ -252,7 +250,7 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         // set accessibility
         self.view.setAccessibilityElement(true)
         self.view.setAccessibilityRole(.group)
-        self.view.setAccessibilityLabel(String(localized: "Sidebar", table: "Document", comment: "accessibility label"))
+        self.view.setAccessibilityLabel(SidebarPane.fileBrowser.label)
     }
     
     
@@ -306,6 +304,12 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
     
     // MARK: Responder Methods
     
+    override func becomeFirstResponder() -> Bool {
+        
+        self.view.window?.makeFirstResponder(self.outlineView) ?? false
+    }
+    
+    
     override func keyDown(with event: NSEvent) {
         
         let hasNoModifier = event.modifierFlags.isDisjoint(with: .deviceIndependentFlagsMask)
@@ -324,6 +328,24 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
     }
     
     
+    override func validRequestor(forSendType sendType: NSPasteboard.PasteboardType?, returnType: NSPasteboard.PasteboardType?) -> Any? {
+        
+        guard sendType == .fileURL, returnType == nil else {
+            return super.validRequestor(forSendType: sendType, returnType: returnType)
+        }
+        
+        let fileURLs = self.targetRows(isContextMenu: self.isContextMenuShown)
+            .compactMap { self.outlineView.item(atRow: $0) as? FileNode }
+            .map(\.file.fileURL)
+        
+        guard !fileURLs.isEmpty else {
+            return super.validRequestor(forSendType: sendType, returnType: returnType)
+        }
+        
+        return FileBrowserServicesRequestor(fileURLs: fileURLs)
+    }
+    
+    
     // MARK: Public Methods
     
     /// Selects the current document in the outline view.
@@ -338,13 +360,33 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
     }
     
     
+    /// Reveals the given file in the outline view.
+    ///
+    /// - Parameter fileURL: The file URL to reveal.
+    /// - Returns: `true` if the file was found and selected.
+    @discardableResult func revealFile(at fileURL: URL) -> Bool {
+        
+        guard let node = self.document.fileNode?.node(at: fileURL) else { return false }
+        
+        if self.isFiltering {
+            self.clearFilter()
+        }
+        
+        guard let row = self.select(node: node) else { return false }
+        
+        self.outlineView.scrollRowToVisible(row)
+        
+        return true
+    }
+    
+    
     /// Invoked when the file node did updated externally.
     ///
     /// - Parameter node: The file node whose children were changed.
     func didUpdateNode(at node: FileNode) {
         
         // -> reload later in viewWillAppear
-        guard !self.view.isHiddenOrHasHiddenAncestor else { return }
+        guard self.viewIfLoaded?.isHiddenOrHasHiddenAncestor == false else { return }
         
         self.outlineView.reloadItem(self.outlineParentItem(for: node), reloadChildren: true)
     }
@@ -434,7 +476,8 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
     /// Prompts for confirmation and deletes the target items.
     @IBAction func delete(_ sender: Any?) {
         
-        let filenames = self.targetNodes(for: sender).map(\.file.fileURL.lastPathComponent)
+        let nodes = self.topLevelNodes(in: self.targetNodes(for: sender))
+        let filenames = nodes.map(\.file.fileURL.lastPathComponent)
         
         guard !filenames.isEmpty else { return }
         
@@ -454,10 +497,12 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         alert.addButton(withTitle: String(localized: .cancel))
         alert.buttons.first?.keyEquivalent = ""
         
+        guard let window = self.document.windowForSheet else { return }
+        
         Task {
-            let returnCode = await alert.beginSheetModal(for: self.document.windowForSheet!)
+            let returnCode = await alert.beginSheetModal(for: window)
             if returnCode == .alertFirstButtonReturn {  // == Move to Trash
-                self.moveToTrash(nil)
+                self.trashNodes(nodes)
             }
         }
     }
@@ -679,6 +724,9 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         
         assert(self.isFiltering)
         
+        let filterQuery = self.filterQuery
+        let showsHiddenFiles = self.showsHiddenFiles
+        
         guard let rootNode = self.document.fileNode else { return assertionFailure() }
         
         let selectedItem = self.outlineView.item(atRow: self.outlineView.selectedRow)
@@ -695,8 +743,22 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         }
         
         // filter
-        let matchedNodes = try await rootNode.filter(with: self.filterQuery, includesHiddenFiles: self.showsHiddenFiles)
-            .filter { $0 != rootNode }
+        let matchedNodes: [FileNode]
+        do {
+            matchedNodes = try await rootNode.filter(with: filterQuery, includesHiddenFiles: showsHiddenFiles)
+                .filter { $0 != rootNode }
+            try Task.checkCancellation()
+        } catch is CancellationError {
+            if !self.isFiltering {
+                rootNode.removeFilterStates()
+            }
+            throw CancellationError()
+        }
+        
+        guard
+            self.filterQuery == filterQuery,
+            self.showsHiddenFiles == showsHiddenFiles
+        else { return }
         
         // update UI
         self.outlineView.reloadData()
@@ -764,7 +826,16 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
     /// - Returns: The outline row indexes.
     private func targetRows(for sender: Any?) -> IndexSet {
         
-        let isContextMenu = ((sender as? NSMenuItem)?.menu == self.outlineView.menu)
+        self.targetRows(isContextMenu: ((sender as? NSMenuItem)?.menu == self.outlineView.menu))
+    }
+    
+    
+    /// Returns the target outline rows.
+    ///
+    /// - Parameter isContextMenu: Whether the action is performed from the contextual menu.
+    /// - Returns: The outline row indexes.
+    private func targetRows(isContextMenu: Bool) -> IndexSet {
+        
         let clickedRow = self.outlineView.clickedRow
         let selectedRows = self.outlineView.selectedRowIndexes
         
@@ -815,9 +886,10 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
     /// Selects the specified item in the outline view.
     ///
     /// - Parameters:
-    ///   - node: The note item to select.
+    ///   - node: The node item to select.
     ///   - edit: If `true`, the text field will be in the editing mode.
-    private func select(node: FileNode, edit: Bool = false) {
+    /// - Returns: The selected row, or `nil` if the item was not selectable.
+    @discardableResult private func select(node: FileNode, edit: Bool = false) -> Int? {
         
         let node = self.document.fileNode?.node(at: node.file.fileURL) ?? node
         
@@ -827,13 +899,15 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         
         let row = self.outlineView.row(forItem: node)
         
-        guard row >= 0 else { return }  // row can be -1 when the node is filtered
+        guard row >= 0 else { return nil }  // row can be -1 when the node is filtered
         
         self.outlineView.selectRowIndexes([row], byExtendingSelection: false)
         
         if edit {
             self.outlineView.editColumn(0, row: row, with: nil, select: false)
         }
+        
+        return row
     }
     
     
@@ -841,6 +915,8 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
     ///
     /// - Parameter nodes: The file nodes to move to the Trash.
     private func trashNodes(_ nodes: [FileNode]) {
+        
+        let nodes = self.topLevelNodes(in: nodes)
         
         guard !nodes.isEmpty else { return }
         
@@ -862,6 +938,20 @@ final class FileBrowserViewController: NSViewController, NSMenuItemValidation {
         }
         self.outlineView.endUpdates()
         AudioServicesPlaySystemSound(.moveToTrash)
+    }
+    
+    
+    /// Returns nodes excluding descendants of another node in the collection.
+    ///
+    /// - Parameter nodes: The nodes to filter.
+    /// - Returns: The nodes that do not have an ancestor in the given collection.
+    private func topLevelNodes(in nodes: [FileNode]) -> [FileNode] {
+        
+        let nodesSet = Set(nodes)
+        
+        return nodes.filter { node in
+            !node.parents.contains { nodesSet.contains($0) }
+        }
     }
     
     
@@ -1213,6 +1303,13 @@ extension FileBrowserViewController: NSTextFieldDelegate {
             return false
         }
         
+        if self.isFiltering {
+            node.updateFilter(with: self.filterQuery, hasMatchedDescendant: node.filterState?.hasMatchedDescendant ?? false)
+            self.filterTask?.cancel()
+            self.filterTask = Task { try await self.updateFilter(updatesExpansion: false) }
+            return true
+        }
+        
         // sort
         let parent = self.outlineView.parent(forItem: node)
         let oldIndex = self.outlineView.childIndex(forItem: node)
@@ -1241,12 +1338,63 @@ extension FileBrowserViewController: NSTextFieldDelegate {
 }
 
 
+// MARK: Menu Delegate
+
+extension FileBrowserViewController: NSMenuDelegate {
+    
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        
+        guard menu == self.outlineView.menu else { return }
+        
+        self.isContextMenuShown = true
+        self.contextMenuSession += 1
+    }
+    
+    
+    func menuDidClose(_ menu: NSMenu) {
+        
+        guard menu == self.outlineView.menu else { return }
+        
+        // -> Services can request the pasteboard contents just after the contextual menu closes.
+        //    (2026-05, macOS 26.5)
+        let session = self.contextMenuSession
+        DispatchQueue.main.async { [weak self] in
+            guard self?.contextMenuSession == session else { return }
+            
+            self?.isContextMenuShown = false
+        }
+    }
+}
+
+
 // MARK: -
 
 /// Column identifiers for outline view.
 private extension NSUserInterfaceItemIdentifier {
     
     static let node = NSUserInterfaceItemIdentifier("node")
+}
+
+
+private final class FileBrowserServicesRequestor: NSObject, NSServicesMenuRequestor {
+    
+    private let fileURLs: [URL]
+    
+    
+    init(fileURLs: [URL]) {
+        
+        self.fileURLs = fileURLs
+    }
+    
+    
+    nonisolated func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
+        
+        guard types.contains(.fileURL) else { return false }
+        
+        pboard.clearContents()
+        
+        return pboard.writeObjects(self.fileURLs as [NSURL])
+    }
 }
 
 
@@ -1357,9 +1505,6 @@ private final class FileBrowserTableCellView: NSTableCellView {
         
         self.tagsView?.rootView = TagsView(tags: self.tags, isSelected: self.isSelected)
         self.tagsLayoutConstraint?.isActive = !self.tags.isEmpty
-        
-        guard #available(macOS 26, *) else { return }
-        
         self.imageView?.contentTintColor = self.tags.last?.color.color
     }
 }
@@ -1378,6 +1523,43 @@ private extension FinderTag.Color {
             case .yellow: .systemYellow
             case .red: .systemRed
             case .orange: .systemOrange
+        }
+    }
+}
+
+
+private extension File.Kind {
+    
+    /// The system symbol name for label image.
+    var symbolName: String {
+        
+        switch self {
+            case .folder: "folder"
+            case .general: "document"
+            case .archive: "zipper.page"
+            case .image: "photo"
+            case .movie: "film"
+            case .audio: "music.note"
+        }
+    }
+    
+    
+    /// The localized label.
+    var label: String {
+        
+        switch self {
+            case .folder:
+                String(localized: "File.Kind.folder.label", defaultValue: "Folder", table: "Document")
+            case .general:
+                String(localized: "File.Kind.general.label", defaultValue: "Document", table: "Document")
+            case .archive:
+                String(localized: "File.Kind.archive.label", defaultValue: "Archive", table: "Document")
+            case .image:
+                String(localized: "File.Kind.image.label", defaultValue: "Image", table: "Document")
+            case .movie:
+                String(localized: "File.Kind.movie.label", defaultValue: "Movie", table: "Document")
+            case .audio:
+                String(localized: "File.Kind.audio.label", defaultValue: "Audio", table: "Document")
         }
     }
 }

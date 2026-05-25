@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2024-2025 1024jp
+//  © 2024-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -26,16 +26,13 @@
 import AppKit
 import SwiftUI
 
-final class ContentViewController: NSSplitViewController {
+final class ContentViewController: NSViewController {
     
     // MARK: Public Properties
     
     var document: DataDocument?  { didSet { self.updateDocument(from: oldValue) } }
     
-    var documentViewController: DocumentViewController? {
-        
-        self.splitViewItems.first?.viewController as? DocumentViewController
-    }
+    private(set) var hostedViewController: NSViewController
     
     
     // MARK: Lifecycle
@@ -43,12 +40,11 @@ final class ContentViewController: NSSplitViewController {
     init(document: DataDocument?) {
         
         self.document = document
+        self.hostedViewController = Self.viewController(document: document)
         
         super.init(nibName: nil, bundle: nil)
         
-        self.splitViewItems = [
-            NSSplitViewItem(viewController: .viewController(document: document)),
-        ]
+        self.addChild(self.hostedViewController)
     }
     
     
@@ -58,42 +54,40 @@ final class ContentViewController: NSSplitViewController {
     }
     
     
-    override func viewDidLoad() {
+    override func loadView() {
         
-        super.viewDidLoad()
+        let view = NSView()
+        view.embedSubview(self.hostedViewController.view)
         
-        self.splitView.isVertical = false
-    }
-    
-    
-    // MARK: Split View Controller Methods
-    
-    override func splitView(_ splitView: NSSplitView, effectiveRect proposedEffectiveRect: NSRect, forDrawnRect drawnRect: NSRect, ofDividerAt dividerIndex: Int) -> NSRect {
-        
-        // avoid showing draggable cursor for the status bar boundary
-        .zero
+        self.view = view
     }
     
     
     // MARK: Private Methods
     
-    /// Updates the document in children.
+    /// Updates the hosted view controller when the document changes.
+    ///
+    /// - Parameter oldDocument: The previous document.
     private func updateDocument(from oldDocument: DataDocument?) {
         
         guard oldDocument != self.document else { return }
         
-        self.splitViewItems[0] = NSSplitViewItem(viewController: .viewController(document: self.document))
+        // remove only the hosted view controller to preserve accessories such as the status bar
+        // -> Split view item accessory controllers can be attached as children (2026-05, macOS 26).
+        self.hostedViewController.viewIfLoaded?.removeFromSuperview()
+        self.hostedViewController.removeFromParent()
+        
+        self.hostedViewController = Self.viewController(document: self.document)
+        self.addChild(self.hostedViewController)
+        self.viewIfLoaded?.embedSubview(self.hostedViewController.view)
     }
-}
-
-
-private extension NSViewController {
+    
     
     /// Creates a new view controller with the passed-in document.
     ///
     /// - Parameter document: The represented document.
     /// - Returns: A view controller.
-    static func viewController(document: DataDocument?) -> sending NSViewController {
+    private static func viewController(document: DataDocument?) -> sending NSViewController {
         
         switch document {
             case let document as Document:
@@ -105,5 +99,25 @@ private extension NSViewController {
             default:
                 preconditionFailure()
         }
+    }
+}
+
+
+private extension NSView {
+    
+    /// Adds a subview constrained to fill the receiver.
+    ///
+    /// - Parameter subview: The subview to embed.
+    func embedSubview(_ subview: NSView) {
+        
+        subview.translatesAutoresizingMaskIntoConstraints = false
+        self.addSubview(subview)
+        
+        NSLayoutConstraint.activate([
+            subview.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+            subview.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+            subview.topAnchor.constraint(equalTo: self.topAnchor),
+            subview.bottomAnchor.constraint(equalTo: self.bottomAnchor),
+        ])
     }
 }

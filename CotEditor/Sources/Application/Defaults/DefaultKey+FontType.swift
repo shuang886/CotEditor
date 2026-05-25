@@ -25,7 +25,6 @@
 
 import AppKit
 import Defaults
-import SyntaxFormat
 
 enum FontType: String, CaseIterable, Codable {
     
@@ -37,7 +36,7 @@ enum FontType: String, CaseIterable, Codable {
     ///
     /// - Parameter size: The size of the font.
     /// - Returns: An NSFont.
-    func systemFont(size: Double = 13) -> sending NSFont {
+    func systemFont(size: Double = 13) -> NSFont {
         
         switch self {
             case .standard:
@@ -51,25 +50,13 @@ enum FontType: String, CaseIterable, Codable {
 }
 
 
-extension Syntax.Kind {
-    
-    var fontType: FontType {
-        
-        switch self {
-            case .general: .standard
-            case .code: .monospaced
-        }
-    }
-}
-
-
 extension UserDefaults {
     
     /// Returns the user font for the given font type.
     ///
     /// - Parameter type: The font type.
     /// - Returns: An NSFont.
-    final func font(for type: FontType) -> sending NSFont {
+    final func font(for type: FontType) -> NSFont {
         
         guard
             let data = self[.fontKey(for: type)],
@@ -112,7 +99,7 @@ extension DefaultKey<Data?> {
     ///
     /// - Parameter type: The font type.
     /// - Returns: A user default key.
-    static func fontKey(for type: FontType) -> sending DefaultKey<Data?> {
+    static func fontKey(for type: FontType) -> DefaultKey<Data?> {
         
         switch type {
             case .standard: .font
@@ -128,7 +115,7 @@ extension DefaultKey<Bool> {
     ///
     /// - Parameter type: The font type.
     /// - Returns: A user default key.
-    static func antialias(for type: FontType) -> sending DefaultKey<Bool> {
+    static func antialias(for type: FontType) -> DefaultKey<Bool> {
         
         switch type {
             case .standard: .shouldAntialias
@@ -141,7 +128,7 @@ extension DefaultKey<Bool> {
     ///
     /// - Parameter type: The font type.
     /// - Returns: A user default key.
-    static func ligature(for type: FontType) -> sending DefaultKey<Bool> {
+    static func ligature(for type: FontType) -> DefaultKey<Bool> {
         
         switch type {
             case .standard: .ligature

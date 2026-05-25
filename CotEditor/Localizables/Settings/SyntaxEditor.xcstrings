@@ -2633,7 +2633,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Caractère d'échappement"
+            "value" : "Caractère d’échappement"
           }
         },
         "it" : {
@@ -4556,7 +4556,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Géré par l’app\n"
+            "value" : "Géré par l’app"
           }
         },
         "it" : {
@@ -4580,7 +4580,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Beheerd door de app\n"
+            "value" : "Beheerd door de app"
           }
         },
         "pl" : {
@@ -4841,7 +4841,7 @@
         }
       }
     },
-    "No error found." : {
+    "No errors found." : {
       "comment" : "message in the Validation pane",
       "localizations" : {
         "bg" : {
@@ -4859,19 +4859,19 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keinen Fehler gefunden."
+            "value" : "Keine Fehler gefunden."
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No error found."
+            "value" : "No errors found."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se encontró ningún error."
+            "value" : "No se han encontrado errores."
           }
         },
         "fr" : {
@@ -4889,7 +4889,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "エラーは検出されませんでした。"
+            "value" : "エラーは見つかりませんでした。"
           }
         },
         "ko" : {
@@ -5963,13 +5963,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "El carácter de escape debe ser un único carácter en unidad de código UTF-16."
+            "value" : "El carácter de escape debe ocupar una sola unidad de código UTF-16."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Le caractère d'échappement doit être un seul caractère en unité de code UTF-16."
+            "value" : "Le caractère d’échappement doit correspondre à une seule unité de code UTF-16."
           }
         },
         "it" : {
@@ -5993,7 +5993,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Het escape-teken moet een enkel teken in UTF-16 code-eenheid zijn."
+            "value" : "Het escape-teken moet uit één UTF-16-code-eenheid bestaan."
           }
         },
         "pl" : {
@@ -6542,7 +6542,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Per l'analisi della sintassi di questo linguaggio si usa un parser basato su strutture e di utilizzo generale chiamato tree-sitter.\nDato che le regole di estrazione sono gestite dall'app, non si possono personalizzare."
+            "value" : "Questo linguaggio usa tree-sitter, un parser generico basato sulla struttura, per l’analisi della sintassi.\nDato che le regole di estrazione sono gestite dall’app, non si possono personalizzare."
           }
         },
         "ja" : {
@@ -6849,19 +6849,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Los intérpretes se utilizan para determinar la sintaxis a partir del encabezado `#!` en el documento."
+            "value" : "Los intérpretes se utilizan para determinar la sintaxis a partir del encabezado `#!` del documento."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Les interpréteurs sont utilisés pour déterminer la syntaxe à partir de l'en-tête `#!` du document."
+            "value" : "Les interpréteurs sont utilisés pour déterminer la syntaxe à partir de l’en-tête `#!` du document."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gli interpreti sono usati per determinare la sintassi in base all'intestazione `#!` header del documento."
+            "value" : "Gli interpreti sono usati per determinare la sintassi in base all’intestazione `#!` del documento."
           }
         },
         "ja" : {

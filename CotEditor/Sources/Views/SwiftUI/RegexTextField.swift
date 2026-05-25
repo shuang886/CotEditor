@@ -54,18 +54,6 @@ struct RegexTextField: NSViewRepresentable {
     }
     
     
-    /// Sets the regular expression parse mode.
-    ///
-    /// - Parameter mode: The mode how to parse the value as a regular expression pattern.
-    func regexParseMode(_ mode: RegexParseMode) -> Self {
-        
-        var view = self
-        view.mode = mode
-        
-        return view
-    }
-    
-    
     /// Sets the inset value inside the field.
     ///
     /// - Parameter inset: An amount, given in points, to inset this view on the specified edges.
@@ -236,24 +224,6 @@ final class RegularExpressionTextField: NSTextField {
     }
     
     
-    /// Invoked when the text (in the field editor) was just changed.
-    override func textDidChange(_ notification: Notification) {
-        
-        super.textDidChange(notification)
-        
-        self.invalidateFieldEditor()
-    }
-    
-    
-    /// The string value was directly changed.
-    override var objectValue: Any? {
-        
-        didSet {
-            self.invalidateFieldEditor()
-        }
-    }
-    
-    
     // MARK: Private Methods
     
     /// Updates the formatter's mode.
@@ -268,7 +238,7 @@ final class RegularExpressionTextField: NSTextField {
         
         guard let editor = self.currentEditor() as? NSTextView else { return }
         
-        editor.highlightAsRegularExpressionPattern(mode: self.regexFormatter.mode, theme: self.regexFormatter.theme, enabled: self.isRegexHighlighted)
+        editor.invalidateRegularExpressionHighlight(mode: self.regexFormatter.mode, theme: self.regexFormatter.theme, enabled: self.isRegexHighlighted)
     }
 }
 

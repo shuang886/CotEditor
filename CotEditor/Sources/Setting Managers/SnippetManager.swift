@@ -9,7 +9,7 @@
 //  ---------------------------------------------------------------------------
 //
 //  © 2004-2007 nakamuxu
-//  © 2014-2025 1024jp
+//  © 2014-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 //
 
 import Foundation
-import Combine
 import AppKit.NSMenuItem
 import Defaults
 import Shortcut
@@ -53,6 +52,8 @@ import URLUtils
     
     private var scope: String?
     
+    private var scopeObserver: Task<Void, Never>?
+    
     
     // MARK: Lifecycle
     
@@ -61,13 +62,18 @@ import URLUtils
         self.defaults = defaults
         self.snippets = defaults[.snippets].compactMap(Snippet.init(dictionary:))
         
-        Task {
-            let scopes = (DocumentController.shared as! DocumentController).$currentSyntaxName.values
-            for await scope in scopes where self.scope != scope {
+        self.scopeObserver = Task { [unowned self] in
+            let scopes = Observations { (DocumentController.shared as! DocumentController).currentSyntaxName }
+            for await scope in scopes where scope != self.scope {
                 self.scope = scope
                 self.updateMenu()
             }
         }
+    }
+    
+    
+    isolated deinit {
+        self.scopeObserver?.cancel()
     }
     
     
@@ -78,24 +84,10 @@ import URLUtils
     /// - Returns: the snippet created.
     func createUntitledSetting() -> Snippet {
         
-        let name = String(localized: "Untitled", comment: "initial setting filename")
+        let name = String(localized: "Untitled", comment: "default name")
             .appendingUniqueNumber(in: self.snippets.map(\.name))
         
         return Snippet(name: name)
-    }
-    
-    
-    /// Returns a snippet corresponding to the given conditions.
-    ///
-    /// - Parameters:
-    ///   - shortcut: The shortcut.
-    ///   - scope: The syntax scope.
-    /// - Returns: The corresponded snippet or nil.
-    func snippet(for shortcut: Shortcut, scope: String) -> Snippet? {
-        
-        let snippets = self.snippets.filter { $0.shortcut == shortcut }
-        
-        return snippets.first { $0.scope == scope } ?? snippets.first { $0.scope == nil }
     }
     
     

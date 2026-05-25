@@ -42,7 +42,7 @@ struct FindPanelFieldView: View {
     @State private var settings: TextFinderSettings = .shared
     @State private var result: FindResult?
     @State private var resultClientIdentifier: ObjectIdentifier?
-    @State private var isFindStringValid = true
+    @State private var didFindObserver: NotificationCenter.ObservationToken?
     @State private var isPressingShift = false
     @State private var isRegexReferencePresented = false
     @State private var isSettingsPresented = false
@@ -157,11 +157,15 @@ struct FindPanelFieldView: View {
                 self.resultClientIdentifier = nil
             }
         }
-        .task {
-            for await notification in NotificationCenter.default.notifications(named: TextFinder.DidFindMessage.name) {
-                self.result = notification.userInfo?["result"] as? FindResult
-                self.resultClientIdentifier = notification.userInfo?["clientIdentifier"] as? ObjectIdentifier
+        .onAppear {
+            guard self.didFindObserver == nil else { return }
+            self.didFindObserver = NotificationCenter.default.addObserver(for: TextFinder.DidFindMessage.self) { message in
+                self.result = message.result
+                self.resultClientIdentifier = message.clientIdentifier
             }
+        }
+        .onDisappear {
+            self.didFindObserver = nil
         }
         .task {
             for await notification in NotificationCenter.default.notifications(named: NSTextView.didChangeSelectionNotification) {
@@ -339,7 +343,7 @@ private struct FindTextField: NSViewRepresentable {
         scrollView.contentView = FindPanelTextClipView()
         scrollView.documentView = textView
         scrollView.allowsMagnification = true
-        scrollView.borderType = isLiquidGlass ? .bezelBorder : .lineBorder
+        scrollView.borderType = .bezelBorder
         scrollView.focusRingType = .exterior
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true

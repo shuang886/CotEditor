@@ -113,13 +113,16 @@ struct TextFindTests {
     
     @Test func matchesCancellation() async throws {
         
-        let string = String(repeating: "aa ", count: 50_000_000)
+        let string = "aa aa"
         let textFind = try TextFind(for: string, findString: "a", mode: .textual(options: [], fullWord: false))
         
         let task = Task {
+            while !Task.isCancelled {
+                await Task.yield()
+            }
+            
             _ = try textFind.matches
         }
-        await Task.yield()
         task.cancel()
         
         await #expect(throws: CancellationError.self) { try await task.value }
@@ -361,5 +364,19 @@ struct TextFindTests {
         #expect(replacementItems[0].range == NSRange(location: 0, length: 4))
         #expect(selectedRanges?[0] == NSRange(location: 0, length: 2))
         #expect(selectedRanges?[1] == NSRange(location: 5, length: 3))
+    }
+    
+    
+    @Test func replaceAllTextualCanonicallyEquivalentCharacter() throws {
+        
+        let textFind = try TextFind(for: "\u{00B7}", findString: "\u{00B7}",
+                                    mode: .textual(options: [], fullWord: false))
+        
+        let (replacementItems, selectedRanges) = textFind.replaceAll(with: "\u{0387}") { _, _, _ in }
+        
+        #expect(replacementItems.count == 1)
+        #expect(replacementItems[0].value.unicodeScalars.map(\.value) == [0x0387])
+        #expect(replacementItems[0].range == NSRange(location: 0, length: 1))
+        #expect(selectedRanges == nil)
     }
 }

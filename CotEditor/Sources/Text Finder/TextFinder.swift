@@ -86,8 +86,6 @@ struct FindMatchesCache {
         
         typealias Subject = TextFinder
         
-        static let name = Notification.Name("TextFinderDidFind")
-        
         var result: FindResult
         var clientIdentifier: ObjectIdentifier
     }
@@ -96,8 +94,6 @@ struct FindMatchesCache {
     struct DidFindAllMessage: NotificationCenter.MainActorMessage {
         
         typealias Subject = TextFinder
-        
-        static let name = Notification.Name("TextFinderDidFindAll")
         
         var findString: String = ""
         var matches: [FindAllMatch] = []
@@ -635,6 +631,8 @@ struct FindMatchesCache {
     
     
     /// Replaces a matched string in selection with replacementString.
+    ///
+    /// - Returns: `true` if replacement succeeded; otherwise, `false`.
     @discardableResult private func replaceSelected() -> Bool {
         
         guard let (textFind, client) = self.prepareTextFind() else { return false }
@@ -716,11 +714,10 @@ struct FindMatchesCache {
             return (highlights, resultMatches)
         }
         
-        // setup progress sheet
-        let indicatorView = FindProgressView(actionName, progress: progress, action: .find)
-        let indicator = NSHostingController(rootView: indicatorView)
-        indicator.rootView.dismiss = { indicator.dismiss(nil) }
-        client.viewControllerForSheet?.presentAsSheet(indicator)
+        // present progress view
+        client.window?.beginSheet {
+            FindProgressView(actionName, progress: progress, action: .find)
+        }
         
         // perform
         let (highlights, matches) = await task.value
@@ -741,8 +738,8 @@ struct FindMatchesCache {
         self.notify(FindResult(action: .find, count: matches.count), for: client)
         
         if showsList {
-            let info: [AnyHashable: Any] = ["findString": textFind.findString, "matches": matches, "client": client]
-            NotificationCenter.default.post(name: DidFindAllMessage.name, object: self, userInfo: info)
+            let message = DidFindAllMessage(findString: textFind.findString, matches: matches, client: client)
+            NotificationCenter.default.post(message, subject: self)
         }
         
         self.settings.noteFindHistory()
@@ -772,11 +769,10 @@ struct FindMatchesCache {
             }
         }
         
-        // setup progress sheet
-        let indicatorView = FindProgressView(String(localized: "Replace All", table: "TextFind"), progress: progress, action: .replace)
-        let indicator = NSHostingController(rootView: indicatorView)
-        indicator.rootView.dismiss = { indicator.dismiss(nil) }
-        client.viewControllerForSheet?.presentAsSheet(indicator)
+        // present progress view
+        client.window?.beginSheet {
+            FindProgressView(String(localized: "Replace All", table: "TextFind"), progress: progress, action: .replace)
+        }
         
         // perform
         let (replacementItems, selectedRanges) = await task.value
@@ -809,8 +805,9 @@ struct FindMatchesCache {
     private func notify(_ result: FindResult, for client: NSTextView) {
         
         let identifier = ObjectIdentifier(client)
+        let message = DidFindMessage(result: result, clientIdentifier: identifier)
         
-        NotificationCenter.default.post(name: DidFindMessage.name, object: self, userInfo: ["result": result, "clientIdentifier": identifier])
+        NotificationCenter.default.post(message, subject: self)
         AccessibilityNotification.Announcement(result.accessibilityPositionMessage ?? result.message).post()
     }
 }

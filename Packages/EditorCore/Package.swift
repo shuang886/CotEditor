@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.3
 
 import PackageDescription
 
@@ -6,14 +6,15 @@ let package = Package(
     name: "EditorCore",
     defaultLocalization: "en",
     platforms: [
-        .macOS(.v15),
+        .macOS(.v26),
     ],
     products: [
         .library(name: "EditorCore", targets: [
             "CharacterInfo",
             "Defaults",
+            "DocumentFile",
             "FileEncoding",
-            "FilePermissions",
+            "FolderFind",
             "Invisible",
             "LineEnding",
             "LineSort",
@@ -28,8 +29,9 @@ let package = Package(
         
         .library(name: "CharacterInfo", targets: ["CharacterInfo"]),
         .library(name: "Defaults", targets: ["Defaults"]),
+        .library(name: "DocumentFile", targets: ["DocumentFile"]),
         .library(name: "FileEncoding", targets: ["FileEncoding"]),
-        .library(name: "FilePermissions", targets: ["FilePermissions"]),
+        .library(name: "FolderFind", targets: ["FolderFind"]),
         .library(name: "Invisible", targets: ["Invisible"]),
         .library(name: "LineEnding", targets: ["LineEnding"]),
         .library(name: "LineSort", targets: ["LineSort"]),
@@ -50,11 +52,14 @@ let package = Package(
         .target(name: "Defaults"),
         .testTarget(name: "DefaultsTests", dependencies: ["Defaults"]),
         
+        .target(name: "DocumentFile", dependencies: ["FileEncoding", "URLUtils"]),
+        .testTarget(name: "DocumentFileTests", dependencies: ["DocumentFile"]),
+        
         .target(name: "FileEncoding", dependencies: ["ValueRange"], resources: [.process("Resources")]),
         .testTarget(name: "FileEncodingTests", dependencies: ["FileEncoding"], resources: [.process("Resources")]),
         
-        .target(name: "FilePermissions"),
-        .testTarget(name: "FilePermissionsTests", dependencies: ["FilePermissions"]),
+        .target(name: "FolderFind", dependencies: ["DocumentFile", "FileEncoding", "LineEnding", "StringUtils", "TextFind"]),
+        .testTarget(name: "FolderFindTests", dependencies: ["FolderFind"]),
         
         .target(name: "Invisible"),
         
@@ -90,16 +95,14 @@ let package = Package(
 
 
 for target in package.targets {
-    target.plugins = [
+    target.plugins = (target.plugins ?? []) + [
         .plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLintPlugins"),
     ]
-    target.swiftSettings = [
+    target.swiftSettings = (target.swiftSettings ?? []) + [
         .strictMemorySafety(),
-        
         .enableUpcomingFeature("ExistentialAny"),
         .enableUpcomingFeature("InternalImportsByDefault"),
         .enableUpcomingFeature("MemberImportVisibility"),
-        
         .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
         .enableUpcomingFeature("InferIsolatedConformances"),
     ]

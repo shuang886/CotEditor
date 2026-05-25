@@ -32,8 +32,8 @@ import UniformTypeIdentifiers
 import OSLog
 import ControlUI
 import Defaults
+import DocumentFile
 import FileEncoding
-import FilePermissions
 import LineEnding
 import StringUtils
 import SyntaxFormat
@@ -49,8 +49,6 @@ extension NSTextView: EditorCounter.Source { }
     struct DidUpdateChangeMessage: NotificationCenter.MainActorMessage {
         
         typealias Subject = Document
-        
-        static let name = Notification.Name("DocumentDidUpdateChange")
     }
     
     
@@ -71,7 +69,7 @@ extension NSTextView: EditorCounter.Source { }
     
     // MARK: Public Properties
     
-    @ObservationIgnored @Published @objc var isEditable = true  { didSet { self.invalidateRestorableState() } }  // @objc for AppleScript support
+    @objc var isEditable = true  { didSet { self.invalidateRestorableState() } }  // @objc for AppleScript support
     var isTransient = false  // untitled & empty document that was created automatically
     
     nonisolated var isVerticalText: Bool {
@@ -88,10 +86,10 @@ extension NSTextView: EditorCounter.Source { }
     let syntaxController: SyntaxController
     let lineEndingScanner: LineEndingScanner
     let counter: EditorCounter
-    @ObservationIgnored @Published private(set) var fileEncoding: FileEncoding
-    @ObservationIgnored @Published private(set) var lineEnding: LineEnding  { didSet { self.lineEndingScanner.baseLineEnding = lineEnding } }
-    @ObservationIgnored @Published private(set) var syntaxName: String
-    @ObservationIgnored @Published private(set) var mode: Mode
+    private(set) var fileEncoding: FileEncoding
+    private(set) var lineEnding: LineEnding  { didSet { self.lineEndingScanner.baseLineEnding = lineEnding } }
+    private(set) var syntaxName: String
+    private(set) var mode: Mode
     
     
     // MARK: Private Properties
@@ -113,7 +111,7 @@ extension NSTextView: EditorCounter.Source { }
     
     private var urlDetector: URLDetector?
     
-    private var syntaxUpdateObserver: AnyCancellable?
+    private var syntaxUpdateObserver: NotificationCenter.ObservationToken?
     private var textStorageObserver: AnyCancellable?
     private var defaultObservers: Set<AnyCancellable> = []
     
@@ -138,6 +136,7 @@ extension NSTextView: EditorCounter.Source { }
         super.init()
         
         self.counter.source = { [weak self] in self?.textView }
+        self.counter.lineRangeCalculator = self.lineEndingScanner
         
         self.defaultObservers = [
             UserDefaults.standard.publisher(for: .autoLinkDetection, initial: true)
@@ -150,10 +149,10 @@ extension NSTextView: EditorCounter.Source { }
                 .sink { [weak self] _ in self?.invalidateMode() },
         ]
         
-        self.syntaxUpdateObserver = NotificationCenter.default.publisher(for: .didUpdateSettingNotification, object: SyntaxManager.shared)
-            .map { $0.userInfo!["change"] as! SettingChange }
-            .filter { [weak self] change in change.old == self?.syntaxName }
-            .sink { [weak self] change in self?.setSyntax(name: change.new ?? SyntaxName.none) }
+        self.syntaxUpdateObserver = NotificationCenter.default.addObserver(of: SyntaxManager.shared, for: DidManagerUpdateSettingMessage.self) { [weak self] message in
+            guard message.change.old == self?.syntaxName else { return }
+            self?.setSyntax(name: message.change.new ?? SyntaxName.none)
+        }
     }
     
     
@@ -235,8 +234,9 @@ extension NSTextView: EditorCounter.Source { }
     @ObservationIgnored override nonisolated var fileURL: URL? {
         
         didSet {
-            Task { @MainActor in
-                NotificationCenter.default.post(name: NSDocument.DidChangeFileURLMessage.name, object: self)
+            Task { @MainActor [fileURL = self.fileURL] in
+                self.synchronizeFileType(documentName: fileURL?.lastPathComponent)
+                NotificationCenter.default.post(NSDocument.DidChangeFileURLMessage(), subject: self)
             }
         }
     }
@@ -261,7 +261,7 @@ extension NSTextView: EditorCounter.Source { }
                     .assign(to: \.isWhitePaper, on: windowController)
             }
             
-            NotificationCenter.default.post(name: DidMakeWindowMessage.name, object: self)
+            NotificationCenter.default.post(DidMakeWindowMessage(), subject: self)
         }
         
         self.applyContentToWindow()
@@ -284,6 +284,7 @@ extension NSTextView: EditorCounter.Source { }
         
         if windowController == self.windowController {
             self.windowController = nil
+            self.textStorageObserver = nil
         }
     }
     
@@ -345,7 +346,7 @@ extension NSTextView: EditorCounter.Source { }
                 return .specific(encoding)
             }
             
-            var encodingCandidates = EncodingManager.shared.fileEncodings.compactMap(\.self?.encoding)
+            var encodingCandidates = EncodingManager.shared.fileEncodingCandidates
             if isInitialized {  // prioritize the current encoding
                 let currentEncoding = DispatchQueue.syncOnMain { self.fileEncoding.encoding }
                 encodingCandidates.insert(currentEncoding, at: 0)
@@ -507,7 +508,7 @@ extension NSTextView: EditorCounter.Source { }
             {
                 // -> Due to the async-saving, self.textStorage can be changed from the actual saved content.
                 //    But we don't care about that.
-                self.setSyntax(name: syntaxName)
+                self.setSyntax(name: syntaxName, documentName: url.lastPathComponent)
             }
             
             if !saveOperation.isAutosave {
@@ -528,7 +529,7 @@ extension NSTextView: EditorCounter.Source { }
             // -> Need to set it directly to the file instead of providing it in `additionalFileAttributes(for:)`
             //    to remove the existing attribute.
             if UserDefaults.standard[.savesTextOrientation] {
-                try? url.setExtendedAttribute(data: self.isVerticalText ? Data([1]) : nil, for: FileExtendedAttributeName.verticalText)
+                try? url.setExtendedAttribute(data: self.isVerticalText ? Data([1]) : nil, for: ExtendedFileAttributeName.verticalText)
             }
             
             guard saveOperation.updatesDocumentFile else { return }
@@ -655,7 +656,7 @@ extension NSTextView: EditorCounter.Source { }
         
         super.close()
         
-        self.syntaxUpdateObserver?.cancel()
+        self.syntaxUpdateObserver = nil
         self.textStorageObserver?.cancel()
         self.defaultObservers.removeAll()
         self.counter.cancel()
@@ -745,7 +746,7 @@ extension NSTextView: EditorCounter.Source { }
         
         super.updateChangeCount(change)
         
-        NotificationCenter.default.post(name: DidUpdateChangeMessage.name, object: self)
+        NotificationCenter.default.post(DidUpdateChangeMessage(), subject: self)
     }
     
     
@@ -754,7 +755,7 @@ extension NSTextView: EditorCounter.Source { }
         // This method updates the values in the .isDocumentEdited and .hasUnautosavedChanges properties.
         super.updateChangeCount(withToken: changeCountToken, for: saveOperation)
         
-        NotificationCenter.default.post(name: DidUpdateChangeMessage.name, object: self)
+        NotificationCenter.default.post(DidUpdateChangeMessage(), subject: self)
     }
     
     
@@ -876,8 +877,12 @@ extension NSTextView: EditorCounter.Source { }
                 return self.isEditable
                 
             case #selector(changeSyntax(_:)):
-                if let item = item as? NSMenuItem {
-                    item.state = (item.representedObject as? String == self.syntaxName) ? .on : .off
+                if let item = item as? NSMenuItem, let name = item.representedObject as? String {
+                    let isSelected = name == self.syntaxName
+                    item.state = isSelected ? .on : .off
+                    item.isHidden = (!isSelected &&
+                                     item.tag != SyntaxMenuTag.recentItem.rawValue &&
+                                     UserDefaults.standard[.hiddenSyntaxes].contains(name))
                 }
                 
             case #selector(toggleEditable):
@@ -888,9 +893,6 @@ extension NSTextView: EditorCounter.Source { }
                     item.image = self.isEditable
                         ? NSImage(systemSymbolName: "pencil.slash", accessibilityDescription: nil)
                         : NSImage(systemSymbolName: "pencil", accessibilityDescription: nil)
-                    if #unavailable(macOS 26) {
-                        item.image = nil
-                    }
                     
                 } else if let item = item as? StatableToolbarItem {
                     item.toolTip = self.isEditable
@@ -946,6 +948,8 @@ extension NSTextView: EditorCounter.Source { }
     
     
     /// Updates the current selection ranges without touching AppKit views off the main thread.
+    ///
+    /// - Parameter ranges: The selected ranges.
     func updateSelectedRanges(_ ranges: [NSRange]) {
         
         self.selectedRanges.withLock { $0 = ranges }
@@ -1073,7 +1077,8 @@ extension NSTextView: EditorCounter.Source { }
     ///
     /// - Parameters:
     ///   - name: The name of the syntax to change with.
-    func setSyntax(name: String) {
+    ///   - documentName: The document filename used to resolve the file type, or `nil` to use `fileURL`.
+    func setSyntax(name: String, documentName: String? = nil) {
         
         let syntax: Syntax
         do {
@@ -1082,16 +1087,17 @@ extension NSTextView: EditorCounter.Source { }
             return self.presentErrorAsSheet(error)
         }
         
-        guard syntax != self.syntaxController.syntax else { return }
+        guard name != self.syntaxName || syntax != self.syntaxController.syntax else {
+            self.synchronizeFileType(syntax: syntax, documentName: documentName)
+            return
+        }
         
         SyntaxManager.shared.noteRecentSetting(name: name)
-        
-        let type = syntax.fileMap.extensions?.first.flatMap { UTType(filenameExtension: $0) } ?? .plainText
         
         // update
         self.syntaxController.update(syntax: syntax, name: name)
         self.syntaxName = name
-        self.fileType = type.identifier
+        self.synchronizeFileType(syntax: syntax, documentName: documentName)
         
         self.invalidateMode()
         self.invalidateRestorableState()
@@ -1104,12 +1110,12 @@ extension NSTextView: EditorCounter.Source { }
     ///   - filename: The new filename.
     func invalidateSyntax(filename: String) {
         
-        guard
-            let syntaxName = SyntaxManager.shared.settingName(documentName: filename, content: self.textStorage.string),
-            syntaxName != self.syntaxName
-        else { return }
+        guard let syntaxName = SyntaxManager.shared.settingName(documentName: filename, content: self.textStorage.string) else {
+            self.synchronizeFileType(documentName: filename)
+            return
+        }
         
-        self.setSyntax(name: syntaxName)
+        self.setSyntax(name: syntaxName, documentName: filename)
     }
     
     
@@ -1151,6 +1157,27 @@ extension NSTextView: EditorCounter.Source { }
     
     // MARK: Private Methods
     
+    /// Updates `fileType` to follow the actual filename for saved documents, or the syntax for unsaved ones.
+    ///
+    /// - Parameters:
+    ///   - syntax: The syntax to derive the file type from, or `nil` to use the current syntax.
+    ///   - documentName: The document filename, or `nil` to use the current file URL.
+    private func synchronizeFileType(syntax: Syntax? = nil, documentName: String? = nil) {
+        
+        let documentName = documentName ?? self.fileURL?.lastPathComponent
+        let fileExtension: String? = if let documentName {
+            documentName.pathExtension
+        } else {
+            (syntax ?? self.syntaxController.syntax).fileMap.extensions?.first
+        }
+        let type = fileExtension.flatMap { UTType(filenameExtension: $0) } ?? .plainText
+        
+        guard self.fileType != type.identifier else { return }
+        
+        self.fileType = type.identifier
+    }
+    
+    
     /// Creates a unique file URL for `autosavedContentsFileURL` to use in Autosave Elsewhere.
     ///
     /// Let the content backup in `~/Library/Autosaved Information/` directory,
@@ -1190,14 +1217,14 @@ extension NSTextView: EditorCounter.Source { }
         }
         
         // save document state to the extended file attributes
-        // -> Save FileExtendedAttributeName.verticalText at `super.writeSafely(to:ofType:for:)`
+        // -> Save ExtendedFileAttributeName.verticalText at `super.writeSafely(to:ofType:for:)`
         //     since the xattr already set to the file cannot remove at this point. (2024-06)
         var xattrs: [String: Data] = [:]
         if self.shouldSaveEncodingXattr {
-            xattrs[FileExtendedAttributeName.encoding] = self.fileEncoding.encoding.xattrEncodingData
+            xattrs[ExtendedFileAttributeName.encoding] = self.fileEncoding.encoding.xattrEncodingData
         }
         if self.suppressesInconsistentLineEndingAlert {
-            xattrs[FileExtendedAttributeName.allowLineEndingInconsistency] = Data([1])
+            xattrs[ExtendedFileAttributeName.allowLineEndingInconsistency] = Data([1])
         }
         if !xattrs.isEmpty {
             attributes[FileAttributeKey.extendedAttributes] = xattrs
@@ -1266,25 +1293,29 @@ extension NSTextView: EditorCounter.Source { }
     
     /// Interactively changes the document's text encoding.
     ///
-    /// - Parameter fileEncoding: The text encoding to change.
-    func askChangingEncoding(to fileEncoding: FileEncoding) {
+    /// - Parameters:
+    ///   - fileEncoding: The text encoding to change.
+    ///   - completionHandler: The closure called after the interaction finishes.
+    func askChangingEncoding(to fileEncoding: FileEncoding, completionHandler: @escaping () -> Void = { }) {
         
         assert(Thread.isMainThread)
         
-        guard fileEncoding != self.fileEncoding else { return }
+        guard fileEncoding != self.fileEncoding else {
+            completionHandler()
+            return
+        }
         
         // change encoding immediately if there is nothing to worry about
         if self.fileURL == nil || self.textStorage.string.isEmpty {
-            return self.changeEncoding(to: fileEncoding)
+            self.changeEncoding(to: fileEncoding)
+            completionHandler()
+            return
         }
         
         // change encoding interactively
         self.performActivity(withSynchronousWaiting: false) { [unowned self] activityCompletionHandler in
-            let completionHandler = { [weak self] didChange in
-                if !didChange, let self {
-                    // reset status bar selection for in case when the operation was invoked from the pop-up button in the status bar
-                    self.fileEncoding = self.fileEncoding
-                }
+            let finishActivity = {
+                completionHandler()
                 activityCompletionHandler()
             }
             
@@ -1302,7 +1333,12 @@ extension NSTextView: EditorCounter.Source { }
             alert.helpAnchor = "howto_change_encoding"
             alert.showsHelp = true
             
-            let documentWindow = self.windowForSheet!
+            guard let documentWindow = self.windowForSheet else {
+                finishActivity()
+                assertionFailure()
+                return
+            }
+            
             Task {
                 let returnCode = await alert.beginSheetModal(for: documentWindow)
                 switch returnCode {
@@ -1314,12 +1350,12 @@ extension NSTextView: EditorCounter.Source { }
                                     self.changeEncoding(to: fileEncoding)
                                     self.showWarningInspector()
                                 }
-                                completionHandler(didRecover)
+                                finishActivity()
                             }
                             return
                         }
                         self.changeEncoding(to: fileEncoding)
-                        completionHandler(true)
+                        finishActivity()
                         
                     case .alertSecondButtonReturn:  // = Reinterpret
                         // ask whether discard unsaved changes
@@ -1337,7 +1373,7 @@ extension NSTextView: EditorCounter.Source { }
                             let returnCode = await alert.beginSheetModal(for: documentWindow)
                             
                             guard returnCode == .alertSecondButtonReturn else {  // = Discard Changes
-                                completionHandler(false)
+                                finishActivity()
                                 return
                             }
                         }
@@ -1345,14 +1381,14 @@ extension NSTextView: EditorCounter.Source { }
                         // reinterpret
                         do {
                             try self.reinterpret(encoding: fileEncoding.encoding)
-                            completionHandler(true)
+                            finishActivity()
                         } catch {
                             NSSound.beep()
-                            self.presentErrorAsSheet(error, recoveryHandler: completionHandler)
+                            self.presentErrorAsSheet(error) { _ in finishActivity() }
                         }
                         
                     case .alertThirdButtonReturn:  // = Cancel
-                        completionHandler(false)
+                        finishActivity()
                         
                     default: preconditionFailure()
                 }
@@ -1412,7 +1448,7 @@ extension NSTextView: EditorCounter.Source { }
                     if let fileURL = self.fileURL {
                         var error: NSError?
                         NSFileCoordinator(filePresenter: self).coordinate(writingItemAt: fileURL, options: .contentIndependentMetadataOnly, error: &error) { newURL in  // FILE_ACCESS
-                            try? newURL.setExtendedAttribute(data: Data([1]), for: FileExtendedAttributeName.allowLineEndingInconsistency)
+                            try? newURL.setExtendedAttribute(data: Data([1]), for: ExtendedFileAttributeName.allowLineEndingInconsistency)
                         }
                     }
                 }

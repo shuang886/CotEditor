@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2023-2025 1024jp
+//  © 2023-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ struct DonationSettingsView: View {
                                         do {
                                             try await AppStore.sync()
                                         } catch {
-                                            self.presentError(error)
+                                            self.presentError(error, disablesDonation: false)
                                         }
                                     }
                                 }.buttonStyle(.link)
@@ -115,7 +115,7 @@ struct DonationSettingsView: View {
                                         Text(item.label)
                                     }
                                 }
-                            }.fixedSize()
+                            }
                             
                             Text("As proof of your kind support, a coffee badge appears on the status bar during continuous support.", tableName: "DonationSettings")
                                 .foregroundStyle(.secondary)
@@ -124,7 +124,8 @@ struct DonationSettingsView: View {
                     }
                     .accessibilityElement(children: .contain)
                     .subscriptionStatusTask(for: Donation.groupID) { taskState in
-                        self.hasDonated = taskState.value?.map(\.state).contains(.subscribed) == true
+                        self.hasDonated = taskState.value?.map(\.state)
+                            .contains { [.subscribed, .inGracePeriod].contains($0) } == true
                     }
                     
                     Divider()
@@ -212,15 +213,17 @@ struct DonationSettingsView: View {
     
     // MARK: Private Methods
     
-    /// Presents an alert in the proper way.
+    /// Presents the given error.
     ///
-    /// - Parameter error: The error to present.
-    private func presentError(_ error: any Error) {
+    /// - Parameters:
+    ///   - error: The error to present.
+    ///   - disablesDonation: Whether the error means the donation products are unavailable.
+    private func presentError(_ error: any Error, disablesDonation: Bool = true) {
         
         switch error {
             case StoreKitError.userCancelled:
                 break
-            case let error as StoreKitError:
+            case let error as StoreKitError where disablesDonation:
                 self.storeKitError = error
             default:
                 self.error = error
@@ -247,6 +250,11 @@ private struct OnetimeProductViewStyle: ProductViewStyle {
     
     
     /// Returns the view to display when the state is success.
+    ///
+    /// - Parameters:
+    ///   - product: The product.
+    ///   - icon: The product icon.
+    /// - Returns: The view to display when the state is success.
     @ViewBuilder private func productView(_ product: Product, icon: ProductViewStyleConfiguration.Icon) -> some View {
         
         HStack(alignment: .top, spacing: 10) {
@@ -289,7 +297,6 @@ private struct OnetimeProductViewStyle: ProductViewStyle {
                         .font(.system(size: 11))
                 }
                 .monospacedDigit()
-                .fixedSize()
                 .padding(.top, 6)
                 .contentTransition(.numericText())
                 .animation(.default, value: self.quantity)

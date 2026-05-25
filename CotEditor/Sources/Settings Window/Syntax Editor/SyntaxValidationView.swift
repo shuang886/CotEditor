@@ -41,7 +41,7 @@ struct SyntaxValidationView: View {
             MessageView(count: self.errors.count)
             
             if !self.errors.isEmpty {
-                List(Array(self.errors.enumerated()), id: \.offset, selection: $selection) { _, error in
+                List(self.errors.enumerated(), id: \.offset, selection: $selection) { _, error in
                     ErrorView(error: error)
                 }
                 .border(.separator)
@@ -72,7 +72,7 @@ struct SyntaxValidationView: View {
         private var message: String {
             
             (self.count == 0)
-                ? String(localized: "No error found.", table: "SyntaxEditor",
+                ? String(localized: "No errors found.", table: "SyntaxEditor",
                          comment: "message in the Validation pane")
                 : String(localized: "\(self.count) errors found.", table: "SyntaxEditor",
                          comment: "message in the Validation pane")

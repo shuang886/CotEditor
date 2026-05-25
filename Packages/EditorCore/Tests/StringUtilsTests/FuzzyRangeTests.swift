@@ -51,6 +51,8 @@ struct FuzzyRangeTests {
         
         #expect(string.range(in: FuzzyRange(location: 5, length: 1)) == nil)
         #expect(string.range(in: FuzzyRange(location: -6, length: 1)) == nil)
+        #expect(string.range(in: FuzzyRange(location: 2, length: 10)) == nil)
+        #expect(string.range(in: FuzzyRange(location: -2, length: 2)) == nil)
         #expect(string.range(in: FuzzyRange(location: 2, length: -10)) == nil)
     }
     
@@ -94,6 +96,8 @@ struct FuzzyRangeTests {
         #expect(string.rangeForLine(in: FuzzyRange(location: 0, length: 1)) == NSRange(0..<0))
         #expect(string.rangeForLine(in: FuzzyRange(location: 4, length: 1)) == NSRange(location: length, length: 0))
         #expect(string.rangeForLine(in: FuzzyRange(location: 2, length: 3)) == nil)
+        #expect(string.rangeForLine(in: FuzzyRange(location: -5, length: 5)) == nil)
+        #expect(string.rangeForLine(in: FuzzyRange(location: 3, length: -5)) == nil)
     }
     
     
@@ -128,6 +132,16 @@ struct FuzzyRangeTests {
         #expect(throws: FuzzyLocationError.invalidColumn(4)) { try string.fuzzyLocation(line: 5, column: 4) }
         #expect(try string.fuzzyLocation(line: 5, column: -1) == 16)
         #expect(try string.fuzzyLocation(line: 5, column: -2) == 15)
+    }
+    
+    
+    @Test func fuzzyLocationErrorDescription() {
+        
+        let lineError: any Error = FuzzyLocationError.invalidLine(-6)
+        let columnError: any Error = FuzzyLocationError.invalidColumn(4)
+        
+        #expect(lineError.localizedDescription == "The line number -6 is out of the range.")
+        #expect(columnError.localizedDescription == "The column number 4 is out of the range.")
     }
     
     

@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2023-2025 1024jp
+//  © 2023-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -50,6 +50,8 @@ struct ActionCommand: Identifiable {
     
     
     /// Performs the original menu action.
+    ///
+    /// - Returns: `true` if the command was performed; otherwise, `false`.
     @MainActor @discardableResult func perform() -> Bool {
         
         let sender = NSMenuItem()
@@ -86,16 +88,20 @@ extension ActionCommand {
         var score = 0
         var remaining = command
         for string in (self.paths[1...] + [self.title]) {
-            let match = string.abbreviatedMatch(with: remaining)
+            // treat whitespace after a matched segment as a separator between menu path components
+            let searchString = matches.isEmpty
+                ? remaining
+                : String(remaining.drop(while: \.isWhitespace))
+            let match = string.abbreviatedMatch(with: searchString)
             
             if matches.isEmpty, match == nil { continue }
             
             matches.append(.init(string: string, ranges: match?.ranges ?? []))
             score += match?.score ?? 0
-            remaining = match?.remaining ?? remaining
+            remaining = match?.remaining ?? searchString
         }
         
-        guard remaining.isEmpty else { return nil }
+        guard !matches.isEmpty, remaining.allSatisfy(\.isWhitespace) else { return nil }
         
         return (matches, score)
     }

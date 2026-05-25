@@ -60,6 +60,7 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
     @ViewLoading private var lineNumberView: LineNumberView
     private weak var advancedCounterView: NSView?
     
+    private var documentObservers: [Task<Void, Never>] = []
     private var observers: Set<AnyCancellable> = []
     
     
@@ -83,6 +84,8 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
     
     
     isolated deinit {
+        self.documentObservers.forEach { $0.cancel() }
+        
         // detach layoutManager safely
         guard
             let textStorage = self.textView.textStorage,
@@ -100,6 +103,7 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
             lineEndingScanner: self.document.lineEndingScanner
         )
         textView.delegate = self
+        textView.accessibilityHelpProvider = { [weak self] in self?.editorAccessibilityHelp }
         
         let scrollView = BidiScrollView()
         scrollView.hasVerticalScroller = true
@@ -170,16 +174,6 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
             defaults.publisher(for: .selectionInstanceHighlightDelay, initial: true)
                 .assign(to: \.selectionInstanceHighlightDelay, on: self.textView),
             
-            // observe document setting changes
-            self.document.$syntaxName
-                .sink { [weak self] _ in self?.applySyntax() },
-            self.document.$lineEnding
-                .assign(to: \.lineEnding, on: self.textView),
-            self.document.$mode
-                .removeDuplicates()
-                .map(ModeManager.shared.setting(for:))
-                .sink { [weak self] in self?.textView.applyMode($0) },
-            
             // observe text orientation for line number view
             self.textView.publisher(for: \.layoutOrientation, options: .initial)
                 .sink { [weak self] orientation in
@@ -202,12 +196,30 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
                 },
         ]
         
-        if #unavailable(macOS 26) {
-            // toggle visibility of the separator of the line number view
-            UserDefaults.standard.publisher(for: .showLineNumberSeparator, initial: true)
-                .assign(to: \.drawsSeparator, on: self.lineNumberView)
-                .store(in: &observers)
-        }
+        // apply initial document settings immediately
+        self.textView.applySyntax(self.document.syntaxController.syntax)
+        self.textView.lineEnding = self.document.lineEnding
+        self.textView.applyMode(ModeManager.shared.setting(for: self.document.mode))
+        
+        // observe document setting changes
+        self.documentObservers = [
+            Task { [textView, document] in
+                for await _ in Observations({ document.syntaxName }) {
+                    textView.applySyntax(document.syntaxController.syntax)
+                }
+            },
+            Task { [textView, document] in
+                for await lineEnding in Observations({ document.lineEnding }) {
+                    textView.lineEnding = lineEnding
+                }
+            },
+            Task { [textView, document] in
+                for await modeName in Observations({ document.mode }) {
+                    let mode = ModeManager.shared.setting(for: modeName)
+                    textView.applyMode(mode)
+                }
+            },
+        ]
     }
     
     
@@ -330,17 +342,15 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
         let lineCount = (string as NSString).substring(with: textView.selectedRange).numberOfLines
         let lineRange = FuzzyRange(location: lineNumber, length: lineCount)
         
-        let view = GoToLineView(lineRange: lineRange) { lineRange in
-            guard let range = textView.string.rangeForLine(in: lineRange) else { return false }
-            
-            textView.select(range: range)
-            
-            return true
+        self.view.window?.beginSheet {
+            GoToLineView(lineRange: lineRange) { lineRange in
+                guard let range = textView.string.rangeForLine(in: lineRange) else { return false }
+                
+                textView.select(range: range)
+                
+                return true
+            }
         }
-        let viewController = NSHostingController(rootView: view)
-        viewController.rootView.dismiss = { viewController.dismiss(nil) }
-        
-        self.presentAsSheet(viewController)
     }
     
     
@@ -348,7 +358,7 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
     @IBAction func showUnicodeInputPanel(_ sender: Any?) {
         
         let textView = self.textView
-        let view = UnicodeInputView { [unowned textView] character in
+        let view = UnicodeInputView { character in
             // flag to skip line ending sanitization
             textView.isApprovedTextChange = true
             defer { textView.isApprovedTextChange = false }
@@ -374,14 +384,12 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
             return self.dismissAdvancedCharacterCounter()
         }
         
-        // show counter
-        let sheetView = CharacterCountOptionsSheetView { [weak self] in
-            self?.showAdvancedCharacterCounter()
+        // present option sheet
+        self.view.window?.beginSheet {
+            CharacterCountOptionsSheetView { [weak self] in
+                self?.showAdvancedCharacterCounter()
+            }
         }
-        let optionViewController = NSHostingController(rootView: sheetView)
-        optionViewController.rootView.dismiss = { optionViewController.dismiss(nil) }
-        
-        self.presentAsSheet(optionViewController)
     }
     
     
@@ -419,16 +427,18 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
     
     // MARK: Private Methods
     
-    /// Applies syntax to the inner text view.
-    private func applySyntax() {
+    /// The accessibility help text for the editor text view.
+    private var editorAccessibilityHelp: String? {
         
-        let syntax = self.document.syntaxController.syntax
-        self.textView.commentDelimiters = syntax.commentDelimiters
-        self.textView.indentTokens = syntax.indentation.blockDelimiters.compactMap {
-            IndentToken(begin: $0.begin, end: $0.end, ignoreCase: $0.ignoreCase)
-        }
-        self.textView.quoteDelimiters = syntax.stringDelimiters + syntax.characterDelimiters
-        self.textView.syntaxCompletionWords = syntax.completionWords
+        let counter = self.document.counter
+        let components = CountType.allCases
+            .filter { counter.statusBarRequirements.contains($0.counterTypes) }
+            .compactMap { type in
+                counter.result.formattedValue(type: type, forAccessibility: true)
+                    .map { "\(type.label): \($0)" }
+            }
+        
+        return components.isEmpty ? nil : components.joined(separator: ", ")
     }
     
     
@@ -444,7 +454,6 @@ final class EditorTextViewController: NSViewController, NSServicesMenuRequestor,
         }
         let viewController = NSHostingController(rootView: rootView)
         viewController.sizingOptions = .preferredContentSize
-        viewController.rootView.dismiss = { viewController.dismiss(nil) }
         
         let positioningRect = textView.boundingRect(for: textView.selectedRange)?.insetBy(dx: -1, dy: -1) ?? .zero
         
@@ -556,10 +565,12 @@ extension EditorTextViewController: EditorTextView.Delegate {
         
         guard !replacementString.isEmpty else { return true }
         
-        // insert snippets to view
-        guard textView.shouldChangeText(in: textView.rangeForUserTextChange, replacementString: replacementString) else { return false }
+        let standardizedReplacementString = replacementString.replacingLineEndings(with: textView.lineEnding)
         
-        textView.replaceCharacters(in: textView.rangeForUserTextChange, with: replacementString)
+        // insert snippets to view
+        guard textView.shouldChangeText(in: textView.rangeForUserTextChange, replacementString: standardizedReplacementString) else { return false }
+        
+        textView.replaceCharacters(in: textView.rangeForUserTextChange, with: standardizedReplacementString)
         textView.didChangeText()
         
         return true
@@ -582,6 +593,20 @@ extension EditorTextViewController: NSFontChanging {
 // MARK: Extensions
 
 private extension EditorTextView {
+    
+    /// Applies the given syntax settings.
+    ///
+    /// - Parameter syntax: The syntax to apply.
+    func applySyntax(_ syntax: Syntax) {
+        
+        self.commentDelimiters = syntax.commentDelimiters
+        self.indentTokens = syntax.indentation.blockDelimiters.compactMap {
+            IndentToken(begin: $0.begin, end: $0.end, ignoreCase: $0.ignoreCase)
+        }
+        self.quoteDelimiters = syntax.stringDelimiters + syntax.characterDelimiters
+        self.syntaxCompletionWords = syntax.completionWords
+    }
+    
     
     /// Updates the settings for the given mode.
     ///

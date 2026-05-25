@@ -48,6 +48,7 @@ public extension NSRange {
     /// Checks if the given index is in the receiver or touches to one of the receiver's bounds.
     ///
     /// - Parameter index: The index to test.
+    /// - Returns: `true` if the receiver contains or touches `index`; otherwise, `false`.
     func touches(_ index: Int) -> Bool {
         
         self.lowerBound <= index && index <= self.upperBound
@@ -57,6 +58,7 @@ public extension NSRange {
     /// Returns a boolean indicating whether the specified range intersects the receiver’s range.
     ///
     /// - Parameter other: The other range.
+    /// - Returns: `true` if `other` intersects the receiver; otherwise, `false`.
     func intersects(_ other: NSRange) -> Bool {
         
         self.intersection(other) != nil
@@ -65,8 +67,10 @@ public extension NSRange {
     
     /// Checks if the two ranges overlap or touch each other.
     ///
-    /// - Parameter range: The range to test.
     /// - Note: Unlike Swift.Range's `overlaps(_:)`, this method returns `true` when a range length is 0.
+    /// 
+    /// - Parameter range: The range to test.
+    /// - Returns: `true` if the ranges overlap or touch each other; otherwise, `false`.
     func touches(_ range: NSRange) -> Bool {
         
         if self.location == NSNotFound { return false }
@@ -102,6 +106,7 @@ public extension NSRange {
         
         assert(maxLength > 0)
         assert(headPadding >= 0)
+        assert(self.lowerBound <= target.lowerBound && target.lowerBound <= self.upperBound)
         
         guard self.length > maxLength else { return self }
         
@@ -146,9 +151,11 @@ public extension NSRange {
     
     /// Returns a new range by assuming the indices of the given items are inserted.
     ///
-    /// - Parameter items: Insertion items to be inserted.
+    /// - Parameter items: Insertion items to be inserted, sorted by `location` in ascending order.
     /// - Returns: A new range that the receiver moved.
     func inserted(items: [Self.InsertionItem]) -> NSRange {
+        
+        assert(items == items.sorted(using: KeyPathComparator(\.location)))
         
         let location = items
             .prefix { (self.isEmpty && $0.forward) ? $0.location <= self.lowerBound : $0.location < self.lowerBound }

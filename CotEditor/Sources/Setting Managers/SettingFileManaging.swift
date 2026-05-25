@@ -47,10 +47,19 @@ extension SettingState: Identifiable {
 }
 
 
-extension NSNotification.Name {
+/// A message posted when a setting file is updated, with the new and/or previous setting names.
+struct DidManagerUpdateSettingMessage<Subject: SettingFileManaging>: NotificationCenter.MainActorMessage {
     
-    /// A notification posted when a setting file is updated, with the new and/or previous setting names.
-    static let didUpdateSettingNotification = Notification.Name("SettingFileManaging.didUpdateSettingNotification")
+    static var name: Notification.Name { Notification.Name("SettingFileManaging.didUpdateSettingNotification") }
+    
+    
+    var change: SettingChange
+    
+    
+    static func makeNotification(_ message: Self) -> Notification {
+        
+        Notification(name: Self.name, object: nil, userInfo: ["change": message.change])
+    }
 }
 
 
@@ -73,6 +82,29 @@ enum ImportingItem {
     
     case url(URL)
     case payload(any Persistable)
+}
+
+
+extension ImportingItem {
+    
+    /// Performs the given operation while accessing the underlying security-scoped file URL.
+    ///
+    /// - Parameter body: The operation to perform.
+    /// - Returns: The operation result.
+    /// - Throws: An error thrown by `body`.
+    func withSecurityScopedAccess<Result>(_ body: () throws -> Result) rethrows -> Result {
+        
+        guard case .url(let url) = self else {
+            return try body()
+        }
+        
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessing { url.stopAccessingSecurityScopedResource() }
+        }
+        
+        return try body()
+    }
 }
 
 
@@ -190,42 +222,10 @@ extension SettingFileManaging {
     /// - Throws: `InvalidNameError` if the name is invalid.
     func validate(settingName: String, originalName: String?) throws(InvalidNameError) {
         
-        if settingName.isEmpty {
-            throw .empty
-        }
-        
         // just case difference is allowed
-        if originalName?.caseInsensitiveCompare(settingName) == .orderedSame {
-            return
-        }
+        let checksDuplicate = originalName?.caseInsensitiveCompare(settingName) != .orderedSame
         
-        if (settingName + (Setting.fileType.preferredFilenameExtension.map({ "." + $0 }) ?? "")).utf16.count > Int(NAME_MAX) {
-            throw .tooLong
-        }
-        
-        if settingName.contains("/") {  // invalid for filename
-            throw .invalidCharacter("/")
-        }
-        
-        if settingName.contains(":") {  // invalid for filename
-            throw .invalidCharacter(":")
-        }
-        
-        if settingName.contains(where: \.isNewline) {  // invalid for filename
-            throw .newLine
-        }
-        
-        if settingName.hasPrefix(".") {  // invalid for filename
-            throw .startWithDot
-        }
-        
-        if let duplicateName = self.settingNames.first(where: { $0.caseInsensitiveCompare(settingName) == .orderedSame }) {
-            throw .duplicated(name: duplicateName)
-        }
-        
-        if let reservedName = self.reservedNames.first(where: { $0.caseInsensitiveCompare(settingName) == .orderedSame }) {
-            throw .reserved(name: reservedName)
-        }
+        try self.validate(settingName: settingName, checksDuplicate: checksDuplicate)
     }
     
     
@@ -248,7 +248,7 @@ extension SettingFileManaging {
         do {
             setting = try Setting(contentsOf: url)
         } catch {
-            throw SettingFileError(.loadFailed, name: name, underlyingError: error as NSError)
+            throw SettingFileError(.loadFailed, name: name, underlyingError: error)
         }
         self.cachedSettings[name] = setting
         
@@ -268,7 +268,7 @@ extension SettingFileManaging {
         do {
             try FileManager.default.trashItem(at: url, resultingItemURL: nil)
         } catch {
-            throw SettingFileError(.deletionFailed, name: name, underlyingError: error as NSError)
+            throw SettingFileError(.deletionFailed, name: name, underlyingError: error)
         }
         
         self.cachedSettings[name] = nil
@@ -359,6 +359,8 @@ extension SettingFileManaging {
     /// - Throws: `ImportDuplicationError` (only when `overwrite` is `false` and a duplicate exists), or any other error that occurs.
     func importSetting(_ item: ImportingItem, name: String, type: UTType? = nil, overwrite: Bool) throws {
         
+        try self.validate(settingName: name, checksDuplicate: false)
+        
         // check duplication
         if !overwrite {
             for existingName in self.settingNames {
@@ -403,14 +405,14 @@ extension SettingFileManaging {
             }
             
         } catch {
-            throw SettingFileError(.importFailed, name: name, underlyingError: error as NSError)
+            throw SettingFileError(.importFailed, name: name, underlyingError: error)
         }
         
         self.cachedSettings[name] = setting
         
         let change: SettingChange = self.settingNames.contains(name)
-        ? .updated(from: name, to: name)
-        : .added(name)
+            ? .updated(from: name, to: name)
+            : .added(name)
         self.updateSettingList(change: change)
     }
     
@@ -475,7 +477,7 @@ extension SettingFileManaging {
         
         defer {
             self.didUpdateSetting(change: change)
-            NotificationCenter.default.post(name: .didUpdateSettingNotification, object: self, userInfo: ["change": change])
+            NotificationCenter.default.post(DidManagerUpdateSettingMessage(change: change), subject: self)
         }
         
         guard change.old != change.new else { return }
@@ -497,6 +499,48 @@ extension SettingFileManaging {
     
     
     // MARK: Private Methods
+    
+    /// Validates whether the setting name is valid.
+    ///
+    /// - Parameters:
+    ///   - settingName: The setting name to validate.
+    ///   - checksDuplicate: Whether to reject names already in use.
+    /// - Throws: `InvalidNameError` if the name is invalid.
+    private func validate(settingName: String, checksDuplicate: Bool) throws(InvalidNameError) {
+        
+        if settingName.isEmpty {
+            throw .empty
+        }
+        
+        if (settingName + (Setting.fileType.preferredFilenameExtension.map({ "." + $0 }) ?? "")).utf16.count > Int(NAME_MAX) {
+            throw .tooLong
+        }
+        
+        if settingName.contains("/") {  // invalid for filename
+            throw .invalidCharacter("/")
+        }
+        
+        if settingName.contains(":") {  // invalid for filename
+            throw .invalidCharacter(":")
+        }
+        
+        if settingName.contains(where: \.isNewline) {  // invalid for filename
+            throw .newLine
+        }
+        
+        if settingName.hasPrefix(".") {  // invalid for filename
+            throw .startWithDot
+        }
+        
+        if checksDuplicate, let duplicateName = self.settingNames.first(where: { $0.caseInsensitiveCompare(settingName) == .orderedSame }) {
+            throw .duplicated(name: duplicateName)
+        }
+        
+        if let reservedName = self.reservedNames.first(where: { $0.caseInsensitiveCompare(settingName) == .orderedSame }) {
+            throw .reserved(name: reservedName)
+        }
+    }
+    
     
     /// The user setting directory URL in Application Support.
     private nonisolated var userSettingDirectoryURL: URL {
@@ -601,10 +645,10 @@ struct SettingFileError: LocalizedError {
     
     var code: Code
     var name: String
-    var underlyingError: NSError?
+    var underlyingError: (any Error)?
     
     
-    init(_ code: Code, name: String, underlyingError: NSError? = nil) {
+    init(_ code: Code, name: String, underlyingError: (any Error)? = nil) {
         
         self.code = code
         self.name = name
@@ -638,7 +682,7 @@ struct SettingFileError: LocalizedError {
                 String(localized: "SettingFileError.loadFailed.recoverySuggestion.decodingError",
                        defaultValue: "Decoding Error: \(error.localizedDescription)")
             default:
-                self.underlyingError?.localizedRecoverySuggestion
+                self.underlyingError.flatMap { ($0 as NSError).localizedRecoverySuggestion }
         }
     }
 }

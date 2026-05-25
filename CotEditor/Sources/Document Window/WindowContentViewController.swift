@@ -35,7 +35,7 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     var document: DataDocument?  { didSet { self.updateDocument() } }
     var directoryDocument: DirectoryDocument?
     
-    var documentViewController: DocumentViewController? { self.contentViewController.documentViewController }
+    var documentViewController: DocumentViewController?  { self.contentViewController.hostedViewController as? DocumentViewController }
     
     
     // MARK: Private Properties
@@ -47,8 +47,7 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     @ViewLoading private var contentViewItem: NSSplitViewItem
     @ViewLoading private var inspectorViewItem: NSSplitViewItem
     
-    private var versionBrowserEnterObservationTask: Task<Void, Never>?
-    private var versionBrowserExitObservationTask: Task<Void, Never>?
+    private var versionBrowserObservers: [any NSObjectProtocol] = []
     
     private var defaultsObserver: AnyCancellable?
     
@@ -73,6 +72,11 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     }
     
     
+    isolated deinit {
+        self.versionBrowserObservers.forEach(NotificationCenter.default.removeObserver)
+    }
+    
+    
     override func loadView() {
         
         self.view = HoleContentView()
@@ -88,7 +92,7 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
         super.viewDidLoad()
         
         if let directoryDocument {
-            let viewController = FileBrowserViewController(document: directoryDocument)
+            let viewController = SidebarViewController(document: directoryDocument)
             let sidebarViewItem = NSSplitViewItem(sidebarWithViewController: viewController)
             self.addSplitViewItem(sidebarViewItem)
             self.sidebarViewItem = sidebarViewItem
@@ -96,33 +100,15 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
         
         let contentViewController = ContentViewController(document: self.document)
         self.contentViewItem = NSSplitViewItem(viewController: contentViewController)
-        if #available(macOS 26, *) {
-            let controller = NSSplitViewItemAccessoryViewController()
-            controller.view = NSHostingView(rootView: VStack(spacing: 0) {
-                Divider()
-                StatusBar(model: self.statusBarModel)
-            })
-            if #available(macOS 26.1, *) {  // FB18972484
-                controller.isHidden = !UserDefaults.standard[.showStatusBar]
-            }
-            controller.automaticallyAppliesContentInsets = false
-            self.contentViewItem.addBottomAlignedAccessoryViewController(controller)
-            
-            self.addSplitViewItem(self.contentViewItem)
-            
-            // need to set `isHidden` after setting view item (2025-09, macOS 26, fixed in macOS 26.1, FB18972484)
-            if #unavailable(macOS 26.1) {
-                controller.isHidden = !UserDefaults.standard[.showStatusBar]
-            }
-            
-        } else {
-            let controller = NSHostingController(rootView: StatusBar(model: self.statusBarModel))
-            let statusBarItem = NSSplitViewItem(viewController: controller)
-            statusBarItem.isCollapsed = !UserDefaults.standard[.showStatusBar]
-            self.contentViewController.splitViewItems.append(statusBarItem)
-            
-            self.addSplitViewItem(self.contentViewItem)
-        }
+        let statusBarController = NSSplitViewItemAccessoryViewController()
+        statusBarController.view = NSHostingView(rootView: VStack(spacing: 0) {
+            Divider()
+            StatusBar(model: self.statusBarModel)
+        })
+        statusBarController.isHidden = !UserDefaults.standard[.showStatusBar]
+        statusBarController.automaticallyAppliesContentInsets = false
+        self.contentViewItem.addBottomAlignedAccessoryViewController(statusBarController)
+        self.addSplitViewItem(self.contentViewItem)
         
         if self.directoryDocument != nil {
             contentViewController.view.setAccessibilityElement(true)
@@ -155,19 +141,35 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
         self.sidebarViewItem?.isCollapsed = false
         
         // forcibly collapse sidebar while version browse
-        if let sidebarViewItem, let window = self.view.window {
-            self.versionBrowserEnterObservationTask = Task {
-                for await _ in NotificationCenter.default.notifications(named: NSWindow.willEnterVersionBrowserNotification, object: window).map(\.name) {
-                    self.sidebarStateCache = sidebarViewItem.isCollapsed
-                    sidebarViewItem.isCollapsed = true
-                }
-            }
-            self.versionBrowserExitObservationTask = Task {
-                for await _ in NotificationCenter.default.notifications(named: NSWindow.didExitVersionBrowserNotification, object: window).map(\.name) {
-                    self.sidebarStateCache = nil
-                    sidebarViewItem.isCollapsed = false
-                }
-            }
+        self.versionBrowserObservers.forEach(NotificationCenter.default.removeObserver)
+        if self.sidebarViewItem != nil, let window = self.view.window {
+            self.versionBrowserObservers = [
+                NotificationCenter.default.addObserver(forName: NSWindow.willEnterVersionBrowserNotification, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated {
+                        guard
+                            let self,
+                            let sidebarViewItem = self.sidebarViewItem
+                        else { return }
+                        
+                        self.sidebarStateCache = sidebarViewItem.isCollapsed
+                        sidebarViewItem.isCollapsed = true
+                    }
+                },
+                NotificationCenter.default.addObserver(forName: NSWindow.didExitVersionBrowserNotification, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated {
+                        guard
+                            let self,
+                            let sidebarViewItem = self.sidebarViewItem,
+                            let sidebarStateCache = self.sidebarStateCache
+                        else { return }
+                        
+                        sidebarViewItem.isCollapsed = sidebarStateCache
+                        self.sidebarStateCache = nil
+                    }
+                },
+            ]
+        } else {
+            self.versionBrowserObservers.removeAll()
         }
         
         // move focus to the editor
@@ -176,15 +178,9 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
         self.focusEditor()
         
         // observe user defaults for status bar
-        if #available(macOS 26, *) {
-            let statusBarController = self.contentViewItem.bottomAlignedAccessoryViewControllers.first
-            self.defaultsObserver = UserDefaults.standard.publisher(for: .showStatusBar)
-                .sink { statusBarController?.animator().isHidden = !$0 }
-        } else {
-            let statusBarItem = self.contentViewController.splitViewItems.last
-            self.defaultsObserver = UserDefaults.standard.publisher(for: .showStatusBar)
-                .sink { statusBarItem?.animator().isCollapsed = !$0 }
-        }
+        let statusBarController = self.contentViewItem.bottomAlignedAccessoryViewControllers.first
+        self.defaultsObserver = UserDefaults.standard.publisher(for: .showStatusBar)
+            .sink { statusBarController?.animator().isHidden = !$0 }
     }
     
     
@@ -192,10 +188,8 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
         
         super.viewDidDisappear()
         
-        self.versionBrowserEnterObservationTask?.cancel()
-        self.versionBrowserEnterObservationTask = nil
-        self.versionBrowserExitObservationTask?.cancel()
-        self.versionBrowserExitObservationTask = nil
+        self.versionBrowserObservers.forEach(NotificationCenter.default.removeObserver)
+        self.versionBrowserObservers.removeAll()
         
         if let sidebarStateCache {
             self.sidebarViewItem?.isCollapsed = sidebarStateCache
@@ -225,7 +219,7 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
         switch item.action {
             case #selector(toggleSidebar):
                 // validation of `toggleSidebar` is implemented in `validateToolbarItem`
-                return self.sidebarStateCache == nil
+                return self.canToggleSidebar
             default:
                 break
         }
@@ -237,24 +231,23 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
         
         switch item.action {
-            case #selector(showFileBrowser):
-                (item as? NSMenuItem)?.state = (self.sidebarViewItem?.isCollapsed == true) ? .on : .off
-                (item as? NSMenuItem)?.toolTip = (self.sidebarViewItem == nil)
-                    ? String(localized: "The sidebar is only available when a folder is opened as a document.",
-                             table: "MainMenu", comment: "tooltip for the “Show Sidebar” menu item")
-                    : nil
-                return self.sidebarViewItem != nil
-                
             case #selector(toggleSidebar):
                 // The menu item is not validated when the responder has no sidebar (2025-03, macOS 15).
                 (item as? NSMenuItem)?.title = self.sidebarViewItem?.isCollapsed == false
                     ? String(localized: "Hide Sidebar", table: "MainMenu")
                     : String(localized: "Show Sidebar", table: "MainMenu")
-                (item as? NSMenuItem)?.toolTip = (self.sidebarViewItem == nil)
-                    ? String(localized: "The sidebar is only available when a folder is opened as a document.",
-                             table: "MainMenu", comment: "tooltip for the “Show Sidebar” menu item")
-                    : nil
-                return self.sidebarStateCache == nil
+                (item as? NSMenuItem)?.toolTip = self.sidebarAvailabilityHint
+                return self.canToggleSidebar
+                
+            case #selector(showFileBrowser):
+                (item as? NSMenuItem)?.state = self.isSidebarShown(pane: .fileBrowser) ? .on : .off
+                (item as? NSMenuItem)?.toolTip = self.sidebarAvailabilityHint
+                return self.canToggleSidebar
+                
+            case #selector(showFolderFinder):
+                (item as? NSMenuItem)?.state = self.isSidebarShown(pane: .find) ? .on : .off
+                (item as? NSMenuItem)?.toolTip = self.sidebarAvailabilityHint
+                return self.canToggleSidebar
                 
             case #selector(toggleInspector):
                 (item as? NSMenuItem)?.title = self.inspectorViewItem.isCollapsed == false
@@ -283,6 +276,25 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     
     
     // MARK: Public Methods
+    
+    /// Opens the desired sidebar pane.
+    ///
+    /// - Parameter pane: The sidebar pane to open.
+    private func showSidebar(pane: SidebarPane) {
+        
+        guard
+            let sidebarViewItem,
+            let viewController = sidebarViewItem.viewController as? NSTabViewController
+        else { return assertionFailure() }
+        
+        sidebarViewItem.animator().isCollapsed = false
+        viewController.selectedTabViewItemIndex = pane.rawValue
+        
+        // move focus
+        let paneTabviewItem = viewController.tabViewItems[viewController.selectedTabViewItemIndex]
+        self.view.window?.makeFirstResponderDiscardingMarkedText(paneTabviewItem.viewController)
+    }
+    
     
     /// Opens the desired inspector pane.
     ///
@@ -317,13 +329,14 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     /// Moves the focus to the file browser.
     @IBAction func showFileBrowser(_ sender: Any?) {
         
-        guard
-            let sidebarViewItem,
-            let viewController = sidebarViewItem.viewController as? FileBrowserViewController
-        else { return assertionFailure() }
+        self.showSidebar(pane: .fileBrowser)
+    }
+    
+    
+    /// Moves the focus to the folder finder.
+    @IBAction func showFolderFinder(_ sender: Any?) {
         
-        sidebarViewItem.animator().isCollapsed = false
-        self.view.window?.makeFirstResponderDiscardingMarkedText(viewController.outlineView)
+        self.showSidebar(pane: .find)
     }
     
     
@@ -357,6 +370,23 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     
     // MARK: Private Methods
     
+    /// Whether the sidebar can currently be toggled.
+    private var canToggleSidebar: Bool {
+        
+        self.sidebarViewItem != nil && self.sidebarStateCache == nil
+    }
+    
+    
+    /// The localized tooltip to show when sidebar commands are unavailable.
+    private var sidebarAvailabilityHint: String? {
+        
+        (self.sidebarViewItem == nil)
+            ? String(localized: "The sidebar is only available when a folder is opened as a document.",
+                     table: "MainMenu", comment: "tooltip for the “Show Sidebar” menu item")
+            : nil
+    }
+    
+    
     /// The view controller for the content view.
     private var contentViewController: ContentViewController {
         
@@ -364,10 +394,27 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
     }
     
     
+    /// The view controller for the sidebar.
+    private var sidebarViewController: SidebarViewController? {
+        
+        self.sidebarViewItem?.viewController as? SidebarViewController
+    }
+    
+    
     /// The view controller for the inspector.
     private var inspectorViewController: InspectorViewController {
         
         self.inspectorViewItem.viewController as! InspectorViewController
+    }
+    
+    
+    /// Returns whether the given pane in the sidebar is currently shown.
+    ///
+    /// - Parameter pane: The sidebar pane to check.
+    /// - Returns: `true` when the pane is currently visible.
+    private func isSidebarShown(pane: SidebarPane) -> Bool {
+        
+        self.sidebarViewItem?.isCollapsed != true && (self.sidebarViewController?.selectedPane == pane)
     }
     
     
@@ -398,11 +445,10 @@ final class WindowContentViewController: NSSplitViewController, NSToolbarItemVal
         
         self.contentViewController.document = self.document
         self.inspectorViewController.document = self.document
+        self.statusBarModel.document = self.document
         
         if self.directoryDocument != nil {
             self.contentViewController.view.setAccessibilityLabel(self.document?.displayName ?? "")
         }
-        
-        self.statusBarModel.document = self.document
     }
 }

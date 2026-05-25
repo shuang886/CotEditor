@@ -70,6 +70,22 @@ struct IncompatibleCharacterTests {
     }
     
     
+    @Test func scanRoundTripChangingCharactersEvenWhenConvertible() throws {
+        
+        let string = "\\"
+        
+        #expect(string.canBeConverted(to: .plainShiftJIS))
+        
+        let incompatibles = try string.charactersIncompatible(with: .plainShiftJIS)
+        let backslash = try #require(incompatibles.first)
+        
+        #expect(incompatibles.count == 1)
+        #expect(backslash.value.character == "\\")
+        #expect(backslash.value.converted == "＼")
+        #expect(backslash.lowerBound == 0)
+    }
+    
+    
     @Test func scanOnlyIncompatibleCharacters() throws {
         
         let string = "👾🐱‍👓"
@@ -138,6 +154,17 @@ struct IncompatibleCharacterTests {
         // "e\u{0301}" as a character is not ASCII
         #expect(incompatibles.count == 1)
         #expect(incompatibles[0].value.character == string.first)
+    }
+    
+    
+    @Test func scanNormalizationChangingConversion() throws {
+        
+        let string = "e" + "\u{0301}"  // decomposed é
+        let incompatibles = try string.charactersIncompatible(with: .isoLatin1)
+        
+        #expect(incompatibles.count == 1)
+        #expect(incompatibles[0].lowerBound == 0)
+        #expect(incompatibles[0].value.converted?.unicodeScalars.map(\.value) == [0x00E9])
     }
     
     

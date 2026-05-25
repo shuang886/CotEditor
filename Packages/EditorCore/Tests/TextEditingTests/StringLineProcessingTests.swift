@@ -57,6 +57,11 @@ struct StringLineProcessingTests {
         #expect(context.ranges == [NSRange(0, 17)])
         #expect(context.selectedRanges == [NSRange(1, 1), NSRange(6, 0), NSRange(13, 1)])
         
+        context = try #require(string.moveLineUp(in: [NSRange(4, 6)]))
+        #expect(context.strings == ["bbbb\nccc\naa\n"])
+        #expect(context.ranges == [NSRange(0, 12)])
+        #expect(context.selectedRanges == [NSRange(1, 6)])
+        
         #expect(string.moveLineUp(in: [NSRange(2, 1)]) == nil)
     }
     
@@ -87,7 +92,52 @@ struct StringLineProcessingTests {
         #expect(context.ranges == [NSRange(0, 17)])
         #expect(context.selectedRanges == [NSRange(8, 1), NSRange(13, 0), NSRange(17, 1)])
         
+        context = try #require(string.moveLineDown(in: [NSRange(4, 6)]))
+        #expect(context.strings == ["aa\nd\nbbbb\nccc\n"])
+        #expect(context.ranges == [NSRange(0, 14)])
+        #expect(context.selectedRanges == [NSRange(6, 6)])
+        
         #expect(string.moveLineDown(in: [NSRange(14, 1)]) == nil)
+    }
+    
+    
+    @Test func moveLineUpWithCRLF() throws {
+        
+        // CR+LF is treated as a single Character; offsets must use UTF-16 lengths.
+        let string = "aa\r\nbbbb\r\nccc\r\nd\r\neee"
+        var context: EditingContext
+        
+        context = try #require(string.moveLineUp(in: [NSRange(5, 1)]))
+        #expect(context.strings == ["bbbb\r\naa\r\n"])
+        #expect(context.ranges == [NSRange(0, 10)])
+        #expect(context.selectedRanges == [NSRange(1, 1)])
+        
+        // last line without trailing line break
+        let trailingString = "aa\r\nbbbb"
+        context = try #require(trailingString.moveLineUp(in: [NSRange(5, 1)]))
+        #expect(context.strings == ["bbbb\r\naa"])
+        #expect(context.ranges == [NSRange(0, 8)])
+        #expect(context.selectedRanges == [NSRange(1, 1)])
+    }
+    
+    
+    @Test func moveLineDownWithCRLF() throws {
+        
+        let string = "aa\r\nbbbb\r\nccc\r\nd\r\neee"
+        var context: EditingContext
+        
+        // replacementRange unions from NSRange() so it grows from location 0
+        context = try #require(string.moveLineDown(in: [NSRange(5, 1)]))
+        #expect(context.strings == ["aa\r\nccc\r\nbbbb\r\n"])
+        #expect(context.ranges == [NSRange(0, 15)])
+        #expect(context.selectedRanges == [NSRange(10, 1)])
+        
+        // last line without trailing line break — needs to account for CRLF utf16 length (2)
+        let trailingString = "aa\r\nbbbb"
+        context = try #require(trailingString.moveLineDown(in: [NSRange(0, 1)]))
+        #expect(context.strings == ["bbbb\r\naa"])
+        #expect(context.ranges == [NSRange(0, 8)])
+        #expect(context.selectedRanges == [NSRange(6, 1)])
     }
     
     
@@ -107,9 +157,14 @@ struct StringLineProcessingTests {
         #expect(context.ranges == [NSRange(0, 11)])
         #expect(context.selectedRanges == [NSRange(0, 11)])
         
+        context = try #require("aa\nbbbb\nccc".sortLinesAscending(in: NSRange(0, 11)))
+        #expect(context.strings == ["aa\nbbbb\nccc"])
+        #expect(context.ranges == [NSRange(0, 11)])
+        #expect(context.selectedRanges == [NSRange(0, 11)])
+        
         context = try #require(string.sortLinesAscending(in: NSRange(2, 4)))
-        #expect(context.strings == ["aa\nccc"])
-        #expect(context.ranges == [NSRange(0, 6)])
+        #expect(context.strings == ["aa\nccc\n"])
+        #expect(context.ranges == [NSRange(0, 7)])
         #expect(context.selectedRanges == [NSRange(0, 6)])
     }
     
@@ -122,6 +177,29 @@ struct StringLineProcessingTests {
         #expect(context.strings == ["aa\r\nbbbb\r\nccc"])
         #expect(context.ranges == [NSRange(0, 13)])
         #expect(context.selectedRanges == [NSRange(0, 13)])
+    }
+    
+    
+    @Test func sortLinesAscendingWithMixedLineEndings() throws {
+        
+        let string = "b\r\na\nc"
+        var context = try #require(string.sortLinesAscending(in: string.range))
+        
+        #expect(context.strings == ["a\nb\r\nc"])
+        #expect(context.ranges == [NSRange(0, 6)])
+        #expect(context.selectedRanges == [NSRange(0, 6)])
+        
+        let trailingString = "b\r\na\n"
+        context = try #require(trailingString.sortLinesAscending(in: trailingString.nsRange))
+        #expect(context.strings == ["a\nb\r\n"])
+        #expect(context.ranges == [NSRange(0, 5)])
+        #expect(context.selectedRanges == [NSRange(0, 3)])
+        
+        let missingLineEndingString = "c\r\nb\na"
+        context = try #require(missingLineEndingString.sortLinesAscending(in: missingLineEndingString.nsRange, baseLineEnding: "\r"))
+        #expect(context.strings == ["a\rb\nc"])
+        #expect(context.ranges == [NSRange(0, 6)])
+        #expect(context.selectedRanges == [NSRange(0, 5)])
     }
     
     
@@ -141,9 +219,14 @@ struct StringLineProcessingTests {
         #expect(context.ranges == [NSRange(0, 11)])
         #expect(context.selectedRanges == [NSRange(0, 11)])
         
+        context = try #require("aa\naa\n".reverseLines(in: NSRange(0, 6)))
+        #expect(context.strings == ["aa\naa\n"])
+        #expect(context.ranges == [NSRange(0, 6)])
+        #expect(context.selectedRanges == [NSRange(0, 5)])
+        
         context = try #require(string.reverseLines(in: NSRange(2, 4)))
-        #expect(context.strings == ["bbbb\naa"])
-        #expect(context.ranges == [NSRange(0, 7)])
+        #expect(context.strings == ["bbbb\naa\n"])
+        #expect(context.ranges == [NSRange(0, 8)])
         #expect(context.selectedRanges == [NSRange(0, 7)])
     }
     
@@ -156,6 +239,29 @@ struct StringLineProcessingTests {
         #expect(context.strings == ["ccc\r\nbbbb\r\naa"])
         #expect(context.ranges == [NSRange(0, 13)])
         #expect(context.selectedRanges == [NSRange(0, 13)])
+    }
+    
+    
+    @Test func reverseLinesWithMixedLineEndings() throws {
+        
+        let string = "b\r\na\nc"
+        var context = try #require(string.reverseLines(in: string.range))
+        
+        #expect(context.strings == ["c\r\na\nb"])
+        #expect(context.ranges == [NSRange(0, 6)])
+        #expect(context.selectedRanges == [NSRange(0, 6)])
+        
+        let trailingString = "a\r\nb\n"
+        context = try #require(trailingString.reverseLines(in: trailingString.nsRange))
+        #expect(context.strings == ["b\na\r\n"])
+        #expect(context.ranges == [NSRange(0, 5)])
+        #expect(context.selectedRanges == [NSRange(0, 3)])
+        
+        let missingLineEndingString = "a\r\nb\nc"
+        context = try #require(missingLineEndingString.reverseLines(in: missingLineEndingString.nsRange, baseLineEnding: "\r"))
+        #expect(context.strings == ["c\rb\na"])
+        #expect(context.ranges == [NSRange(0, 6)])
+        #expect(context.selectedRanges == [NSRange(0, 5)])
     }
     
     
@@ -176,6 +282,8 @@ struct StringLineProcessingTests {
         #expect(shuffledLines.sorted() == originalLines.sorted())
         #expect(context.ranges == [NSRange(0, 11)])
         #expect(context.selectedRanges == [NSRange(0, 11)])
+        
+        #expect("aa\naa\n".shuffleLines(in: NSRange(0, 6)) != nil)
     }
     
     
@@ -270,7 +378,7 @@ struct StringLineProcessingTests {
     }
     
     
-    @Test func joinLinesIn() {
+    @Test func joinLinesIn() throws {
         
         let string = """
             aa
@@ -283,6 +391,8 @@ struct StringLineProcessingTests {
         #expect(context.strings == ["a bb", "c"])
         #expect(context.ranges == [NSRange(1, 6), NSRange(10, 1)])
         #expect(context.selectedRanges == [NSRange(1, 4), NSRange(8, 1)])
+        
+        #expect(string.joinLines(in: [NSRange(1, 1)]).strings == ["a"])
     }
     
     

@@ -83,6 +83,12 @@ struct CommandBarView: View {
                                 .focused($focus, equals: candidate.id)
                                 .accessibilityFocused($accessibilityFocus, equals: candidate.id)
                                 .id(candidate.id)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction {
+                                    self.selection = candidate.id
+                                    self.perform()
+                                }
                                 .onMouseDown {
                                     self.selection = candidate.id
                                 } onMouseUp: { translation in
@@ -124,14 +130,7 @@ struct CommandBarView: View {
             self.move(down: true) ? .handled : .ignored
         }
         .frame(width: 500)
-        .modifier { content in
-            if #available(macOS 26, *) {
-                content
-                    .glassEffect(in: .rect)
-            } else {
-                content
-            }
-        }
+        .glassEffect(in: .rect)
     }
     
     
@@ -192,7 +191,7 @@ private struct ActionCommandView: View {
             
             VStack(alignment: .leading) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    ForEach(Array(self.matches.enumerated()), id: \.offset) { offset, match in
+                    ForEach(self.matches.enumerated(), id: \.offset) { offset, match in
                         if offset > 0 {
                             Image(systemName: "chevron.compact.right")
                                 .foregroundStyle(.tertiary)
@@ -206,7 +205,7 @@ private struct ActionCommandView: View {
                 .foregroundStyle((self.isSelected && self.colorContrast == .standard) ? Color.selectedMenuItemText.opacity(0.8) : .primary)
                 
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    ForEach(Array(self.command.paths.enumerated()), id: \.offset) { offset, path in
+                    ForEach(self.command.paths.enumerated(), id: \.offset) { offset, path in
                         if offset > 0 {
                             Image(systemName: "chevron.compact.right")
                                 .foregroundStyle(.tertiary)

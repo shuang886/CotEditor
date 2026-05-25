@@ -9,7 +9,7 @@
 //  ---------------------------------------------------------------------------
 //
 //  © 2004-2007 nakamuxu
-//  © 2014-2024 1024jp
+//  © 2014-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -59,14 +59,7 @@ import FileEncoding
         }
         
         self.defaultObserver = defaults.publisher(for: .encodingList, initial: true)
-            .map { $0
-                .map { $0 != kCFStringEncodingInvalidId ? FileEncoding(encoding: String.Encoding(cfEncoding: $0)) : nil }
-                .filter { $0.map { String.availableStringEncodings.contains($0.encoding) } ?? true }
-                .flatMap {
-                    // add "UTF-8 with BOM" item just after the normal UTF-8
-                    ($0?.encoding == .utf8) ? [$0, FileEncoding(encoding: .utf8, withUTF8BOM: true)] : [$0]
-                }
-            }
+            .map { Self.fileEncodings(from: $0) }
             .sink { [weak self] in self?.fileEncodings = $0 }
     }
     
@@ -92,15 +85,22 @@ import FileEncoding
     }
     
     
+    /// Returns a snapshot of file encodings for document decoding.
+    ///
+    /// This avoids reading the observable `fileEncodings` cache from background.
+    var fileEncodingCandidates: [String.Encoding] {
+        
+        Self.fileEncodings(from: self.defaults[.encodingList]).compactMap(\.self?.encoding)
+    }
+    
+    
     /// Returns corresponding String.Encoding from an encoding name.
     ///
     /// - Parameter encodingName: The name of the encoding to find.
     /// - Returns: A string encoding or nil.
-    func encoding(name encodingName: String) -> String.Encoding? {
+    static func encoding(name encodingName: String) -> String.Encoding? {
         
-        self.fileEncodings.lazy
-            .compactMap(\.self)
-            .map(\.encoding)
+        String.availableStringEncodings.lazy
             .first { encodingName == String.localizedName(of: $0) }
     }
     
@@ -109,16 +109,30 @@ import FileEncoding
     ///
     /// - Parameter ianaCharSetName: The IANA charset name of the encoding to find.
     /// - Returns: A string encoding or nil.
-    func encoding(ianaCharSetName: String) -> String.Encoding? {
+    static func encoding(ianaCharSetName: String) -> String.Encoding? {
         
-        self.fileEncodings.lazy
-            .compactMap(\.self)
-            .map(\.encoding)
+        String.availableStringEncodings.lazy
             .first { $0.ianaCharSetName?.caseInsensitiveCompare(ianaCharSetName) == .orderedSame }
     }
     
     
     // MARK: Private Methods
+    
+    /// Creates file encoding entries from the encoding list setting.
+    ///
+    /// - Parameter encodings: The Core Foundation encoding list.
+    /// - Returns: File encoding entries.
+    private static func fileEncodings(from encodings: [CFStringEncoding]) -> [FileEncoding?] {
+        
+        encodings
+            .map { $0 != kCFStringEncodingInvalidId ? FileEncoding(encoding: String.Encoding(cfEncoding: $0)) : nil }
+            .filter { $0.map { String.availableStringEncodings.contains($0.encoding) } ?? true }
+            .flatMap {
+                // add "UTF-8 with BOM" item just after the normal UTF-8
+                ($0?.encoding == .utf8) ? [$0, FileEncoding(encoding: .utf8, withUTF8BOM: true)] : [$0]
+            }
+    }
+    
     
     /// Converts invalid encoding values (-1) to `kCFStringEncodingInvalidId`.
     private func sanitizeEncodingListSetting() {

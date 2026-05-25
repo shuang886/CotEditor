@@ -9,7 +9,7 @@
 //  ---------------------------------------------------------------------------
 //
 //  © 2004-2007 nakamuxu
-//  © 2013-2025 1024jp
+//  © 2013-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -26,17 +26,12 @@
 
 import AppKit
 import SwiftUI
-import Combine
 import OSLog
 import ControlUI
 import Defaults
 import FileEncoding
 import LineEnding
 import StringUtils
-
-@available(macOS, deprecated: 26)
-let isLiquidGlass = if #available(macOS 26, *) { true } else { false }
-
 
 extension Logger {
     
@@ -100,7 +95,7 @@ extension Logger {
     
     private var isSettingsImporterPresented = false
     
-    private var menuUpdateObservers: Set<AnyCancellable> = []
+    private var menuUpdateObservers: [Task<Void, Never>] = []
     
     private lazy var settingsWindowController = SettingsWindowController<SettingsPane>()
     private weak var aboutPanel: NSPanel?
@@ -165,6 +160,7 @@ extension Logger {
         KeyBindingManager.shared.applyShortcutsToMainMenu()
         
         NSApp.servicesProvider = ServicesProvider()
+        NSApp.registerServicesMenuSendTypes([.fileURL], returnTypes: [])
         NSTouchBar.isAutomaticCustomizeTouchBarMenuItemEnabled = true
         
         let lastVersion = UserDefaults.standard[.lastVersion].flatMap(Int.init)
@@ -227,36 +223,49 @@ extension Logger {
         let isAutomaticTabbing = (DocumentWindow.userTabbingPreference == .inFullScreen) && (urls.count > 1)
         
         Task {
-            let reply: NSApplication.DelegateReply = await withThrowingTaskGroup { group in
-                for url in urls {
+            var remainingURLs = urls[...]
+            var reply: NSApplication.DelegateReply = .failure
+            
+            @MainActor func handleOpeningError(_ error: any Error) {
+                
+                if (error as? CocoaError)?.code == .userCancelled {
+                    reply = (reply == .failure) ? .cancel : reply
+                } else {
+                    // ask user for opening file
+                    NSApp.presentError(error)
+                }
+            }
+            
+            if isAutomaticTabbing {
+                // open the first new window before forcing the rest into tabs
+                while let url = remainingURLs.popFirst() {
+                    do {
+                        let (_, documentWasAlreadyOpen) = try await NSDocumentController.shared.openDocument(withContentsOf: url, display: true)
+                        reply = .success
+                        
+                        if !documentWasAlreadyOpen {
+                            DocumentWindow.tabbingPreference = .always
+                            break
+                        }
+                    } catch {
+                        handleOpeningError(error)
+                    }
+                }
+            }
+            
+            await withThrowingTaskGroup { group in
+                for url in remainingURLs {
                     group.addTask { try await NSDocumentController.shared.openDocument(withContentsOf: url, display: true) }
                 }
                 
-                var firstWindowOpened = false
-                var reply: NSApplication.DelegateReply = .failure
-                
                 while let result = await group.nextResult() {
                     switch result {
-                        case .success(let (_, documentWasAlreadyOpen)):
+                        case .success:
                             reply = .success
-                            // on first window opened
-                            // -> The first document needs to open a new window.
-                            if isAutomaticTabbing, !documentWasAlreadyOpen, !firstWindowOpened {
-                                DocumentWindow.tabbingPreference = .always
-                                firstWindowOpened = true
-                            }
                         case .failure(let error):
-                            let cancelled = (error as? CocoaError)?.code == .userCancelled
-                            if cancelled {
-                                reply = (reply == .failure) ? .cancel : reply
-                            } else {
-                                // ask user for opening file
-                                NSApp.presentError(error)
-                            }
+                            handleOpeningError(error)
                     }
                 }
-                
-                return reply
             }
             
             if isAutomaticTabbing {
@@ -387,10 +396,7 @@ extension Logger {
     @IBAction func showEncodingsListEditor(_ sender: Any?) {
         
         self.settingsWindowController.openPane(.format)
-        Task {
-            try await Task.sleep(for: .seconds(0.3))
-            NSApp.sendAction(#selector((any EncodingsListHolder).showEncodingsListView), to: nil, from: nil)
-        }
+        FormatSettingsView.Presentation.shared.requestEncodingList()
     }
     
     
@@ -467,6 +473,8 @@ extension Logger {
         
         guard self.menuUpdateObservers.isEmpty else { return assertionFailure() }
         
+        self.syntaxesMenu?.delegate = self
+        
         self.updateEncodingMenu(self.encodingsMenu!)
         
         self.lineEndingsMenu?.items = LineEnding.allCases.map { lineEnding in
@@ -480,29 +488,51 @@ extension Logger {
             return item
         }
         
-        SyntaxManager.shared.$settingNames
-            .map { names in
-                let action = #selector((any SyntaxChanging).changeSyntax)
-                let noneItem = NSMenuItem(title: String(localized: "SyntaxName.none", defaultValue: "None"), action: action, keyEquivalent: "")
-                noneItem.representedObject = SyntaxName.none
-                let items = names.map { name in
-                    let item = NSMenuItem(title: name, action: action, keyEquivalent: "")
-                    item.representedObject = name
-                    return item
+        self.menuUpdateObservers = [
+            Task { [weak self] in
+                for await names in Observations({ SyntaxManager.shared.settingNames }) {
+                    let action = #selector((any SyntaxChanging).changeSyntax)
+                    let noneItem = NSMenuItem(title: String(localized: "SyntaxName.none", defaultValue: "None"), action: action, keyEquivalent: "")
+                    noneItem.representedObject = SyntaxName.none
+                    let items = names.map { name in
+                        let item = NSMenuItem(title: name, action: action, keyEquivalent: "")
+                        item.representedObject = name
+                        return item
+                    }
+                    
+                    self?.syntaxesMenu?.items = [
+                        noneItem,
+                        .separator()
+                    ] + items
                 }
-                
-                return [
-                    noneItem,
-                    .separator()
-                ] + items
-            }
-            .assign(to: \.items, on: self.syntaxesMenu!)
-            .store(in: &self.menuUpdateObservers)
-        
-        ThemeManager.shared.$settingNames
-            .map { $0.map { NSMenuItem(title: $0, action: #selector((any ThemeChanging).changeTheme), keyEquivalent: "") } }
-            .assign(to: \.items, on: self.themesMenu!)
-            .store(in: &self.menuUpdateObservers)
+            },
+            
+            Task { [weak self] in
+                for await names in Observations({ ThemeManager.shared.settingNames }) {
+                    self?.themesMenu?.items = names
+                        .map { NSMenuItem(title: $0, action: #selector((any ThemeChanging).changeTheme), keyEquivalent: "") }
+                }
+            },
+            
+            Task { [weak self] in
+                for await names in Observations({ ReplacementManager.shared.settingNames }) {
+                    guard let menu = self?.multipleReplaceMenu else { return }
+                    
+                    let manageItem = menu.items.last
+                    menu.items = names.map { name in
+                        let item = NSMenuItem()
+                        item.title = name
+                        item.action = #selector(NSTextView.performTextFinderAction)
+                        item.tag = TextFinder.Action.multipleReplace.rawValue
+                        item.representedObject = name
+                        return item
+                    } + [
+                        .separator(),
+                        manageItem!,
+                    ]
+                }
+            },
+        ]
         
         SnippetManager.shared.menu = self.snippetMenu!
         ScriptManager.shared.menu = self.scriptMenu!
@@ -521,26 +551,6 @@ extension Logger {
             item.toolTip = form.localizedDescription
             return item
         }
-        
-        // build multiple replace menu items
-        ReplacementManager.shared.$settingNames
-            .sink { [weak self] names in
-                guard let menu = self?.multipleReplaceMenu else { return }
-                
-                let manageItem = menu.items.last
-                menu.items = names.map { name in
-                    let item = NSMenuItem()
-                    item.title = name
-                    item.action = #selector(NSTextView.performTextFinderAction)
-                    item.tag = TextFinder.Action.multipleReplace.rawValue
-                    item.representedObject = name
-                    return item
-                } + [
-                    .separator(),
-                    manageItem!,
-                ]
-            }
-            .store(in: &self.menuUpdateObservers)
     }
 }
 
@@ -552,6 +562,16 @@ extension AppDelegate: NSMenuDelegate {
         switch menu {
             case self.encodingsMenu:
                 self.updateEncodingMenu(menu, checksDocument: true)
+            case self.syntaxesMenu:
+                menu.items.forEach { $0.isHidden = false }
+                if NSApp.target(forAction: #selector((any SyntaxChanging).changeSyntax)) == nil {
+                    let hiddenSyntaxes = Set(UserDefaults.standard[.hiddenSyntaxes])
+                    for item in menu.items {
+                        if let name = item.representedObject as? String {
+                            item.isHidden = hiddenSyntaxes.contains(name)
+                        }
+                    }
+                }
             default:
                 break
         }
@@ -599,12 +619,6 @@ extension AppDelegate: NSMenuDelegate {
 
 // MARK: - Private Extensions
 
-private extension NSSound {
-    
-    @MainActor static let glass = NSSound(named: "Glass")
-}
-
-
 private extension NSPanel {
     
     /// Instantiates a panel with a SwiftUI view.
@@ -625,7 +639,7 @@ private extension NSPanel {
         self.titlebarAppearsTransparent = true
         self.hidesOnDeactivate = false
         self.setContentSize(viewController.view.intrinsicContentSize)
-        if #available(macOS 26, *), title == nil {
+        if title == nil {
             self.toolbar = NSToolbar()
         }
         

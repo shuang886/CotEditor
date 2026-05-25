@@ -33,7 +33,7 @@ extension TreeSitterClient {
     struct Content {
         
         private(set) var string: String
-        private(set) var lineStarts: IndexSet
+        private(set) var lineStarts: [Int]
         
         
         /// Creates a new content container.
@@ -53,7 +53,6 @@ extension TreeSitterClient.Content {
     enum EditError: Error {
         
         case invalidRange
-        case pointCalculationFailed
     }
     
     
@@ -79,7 +78,10 @@ extension TreeSitterClient.Content {
     /// - Returns: An `InputEdit` describing the change for tree-sitter.
     mutating func applyEdit(editedRange: NSRange, delta: Int, insertedText: String) throws(EditError) -> InputEdit {
         
-        guard insertedText.length == editedRange.length else { throw .invalidRange }
+        guard
+            editedRange.location >= 0,
+            insertedText.length == editedRange.length
+        else { throw .invalidRange }
         
         let oldLength = editedRange.length - delta
         
@@ -91,21 +93,18 @@ extension TreeSitterClient.Content {
         
         guard preEditRange.upperBound <= preEditString.length else { throw .invalidRange }
         
-        self.string = preEditString.replacingCharacters(in: preEditRange, with: insertedText)
-        self.updateLineStartIndexes(preEditRange: preEditRange, editedRange: editedRange, delta: delta, insertedText: insertedText)
+        let editsCRLFBoundary = preEditString.hasCRLFBoundary(at: preEditRange.lowerBound) ||
+                                preEditString.hasCRLFBoundary(at: preEditRange.upperBound)
         
-        guard
-            let startPoint = Self.point(at: preEditRange.lowerBound, in: preEditLineStarts),
-            let oldEndPoint = Self.point(at: preEditRange.upperBound, in: preEditLineStarts),
-            let newEndPoint = Self.point(at: editedRange.upperBound, in: self.lineStarts)
-        else { throw .pointCalculationFailed }
+        self.string = preEditString.replacingCharacters(in: preEditRange, with: insertedText)
+        self.updateLineStartIndexes(preEditRange: preEditRange, editedRange: editedRange, delta: delta, insertedText: insertedText, editsCRLFBoundary: editsCRLFBoundary)
         
         return InputEdit(startByte: preEditRange.lowerBound * 2,
                          oldEndByte: preEditRange.upperBound * 2,
                          newEndByte: editedRange.upperBound * 2,
-                         startPoint: startPoint,
-                         oldEndPoint: oldEndPoint,
-                         newEndPoint: newEndPoint)
+                         startPoint: Self.point(at: preEditRange.lowerBound, in: preEditLineStarts),
+                         oldEndPoint: Self.point(at: preEditRange.upperBound, in: preEditLineStarts),
+                         newEndPoint: Self.point(at: editedRange.upperBound, in: self.lineStarts))
     }
     
     
@@ -114,20 +113,19 @@ extension TreeSitterClient.Content {
     /// Returns the tree-sitter point (row/column) at the given UTF-16 location.
     ///
     /// - Parameters:
-    ///   - location: The UTF-16 offset in the string.
-    ///   - lineStarts: The cached line start locations.
-    /// - Returns: The corresponding point, or `nil` if the location is out of bounds.
-    private static func point(at location: Int, in lineStarts: IndexSet) -> Point? {
+    ///   - location: A non-negative UTF-16 offset in the string.
+    ///   - lineStarts: The cached line start locations. Must be non-empty and start with `0`.
+    /// - Returns: The corresponding point.
+    private static func point(at location: Int, in lineStarts: [Int]) -> Point {
         
-        guard
-            location >= 0,
-            let lineStart = lineStarts.rangeView(of: 0...location).last?.lowerBound
-        else { return nil }
+        assert(location >= 0)
+        assert(lineStarts.first == 0)
         
-        let row = lineStarts.count(in: 0..<lineStart)
-        let column = location - lineStart
+        let upperIndex = lineStarts.partitioningIndex { $0 > location }
+        let row = lineStarts.index(before: upperIndex)
+        let lineStart = lineStarts[row]
         
-        return Point(row: row, column: column)
+        return Point(row: row, column: location - lineStart)
     }
     
     
@@ -138,28 +136,26 @@ extension TreeSitterClient.Content {
     ///   - editedRange: The edited range in the post-edit string.
     ///   - delta: The change in length between pre-edit and post-edit strings.
     ///   - insertedText: The inserted text that occupies `editedRange`.
-    private mutating func updateLineStartIndexes(preEditRange: NSRange, editedRange: NSRange, delta: Int, insertedText: String) {
+    ///   - editsCRLFBoundary: Whether the edit touches a CRLF sequence boundary.
+    private mutating func updateLineStartIndexes(preEditRange: NSRange, editedRange: NSRange, delta: Int, insertedText: String, editsCRLFBoundary: Bool) {
         
-        var lineStarts = self.lineStarts
-        
-        let removalLowerBound = preEditRange.location + 1
-        let removalUpperBound = preEditRange.upperBound + 1
-        if removalLowerBound < removalUpperBound {
-            lineStarts.remove(integersIn: removalLowerBound..<removalUpperBound)
+        let string = self.string as NSString
+        if editsCRLFBoundary ||
+            string.hasCRLFBoundary(at: editedRange.lowerBound) ||
+            string.hasCRLFBoundary(at: editedRange.upperBound)
+        {
+            self.lineStarts = string.lineStartIndexes()
+            return
         }
         
-        if delta != 0 {
-            lineStarts.shift(startingAt: preEditRange.upperBound, by: delta)
-        }
+        let removalStartIndex = self.lineStarts.partitioningIndex { $0 > preEditRange.lowerBound }
+        let shiftStartIndex = self.lineStarts.partitioningIndex { $0 > preEditRange.upperBound }
+        let insertedLineStarts = insertedText.lineStartIndexes().dropFirst()
         
-        var insertedLineStarts = insertedText.lineStartIndexes()
-        insertedLineStarts.remove(0)
-        if !insertedLineStarts.isEmpty {
-            insertedLineStarts.shift(startingAt: 0, by: editedRange.location)
-            lineStarts.formUnion(insertedLineStarts)
-        }
-        
-        lineStarts.insert(0)
+        var lineStarts = Array(self.lineStarts[..<removalStartIndex])
+        lineStarts.reserveCapacity(self.lineStarts.count - (shiftStartIndex - removalStartIndex) + insertedLineStarts.count)
+        lineStarts.append(contentsOf: insertedLineStarts.lazy.map { $0 + editedRange.location })
+        lineStarts.append(contentsOf: self.lineStarts[shiftStartIndex...].lazy.map { $0 + delta })
         
         self.lineStarts = lineStarts
     }
@@ -172,28 +168,37 @@ private extension NSString {
     
     /// Returns the line start locations (UTF-16) for the string.
     ///
-    /// - Returns: An index set containing all line start locations.
-    func lineStartIndexes() -> IndexSet {
+    /// - Returns: An array containing all line start locations.
+    func lineStartIndexes() -> [Int] {
         
-        var lineStarts = IndexSet()
-        lineStarts.insert(0)
+        var lineStarts = [0]
         
         guard self.length > 0 else { return lineStarts }
         
         var location = 0
         while location < self.length {
             var lineEnd = 0
-            unsafe self.getLineStart(nil, end: &lineEnd, contentsEnd: nil, for: NSRange(location: location, length: 0))
+            var contentsEnd = 0
+            unsafe self.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: location, length: 0))
             
-            guard
-                lineEnd < self.length,
-                lineEnd > location
-            else { break }
-            
-            lineStarts.insert(lineEnd)
+            if contentsEnd < lineEnd {
+                lineStarts.append(lineEnd)
+            }
             location = lineEnd
         }
         
         return lineStarts
+    }
+    
+    
+    /// Returns whether the given location is between a CR and LF character.
+    ///
+    /// - Parameter location: The UTF-16 location to inspect.
+    /// - Returns: `true` if the location splits a CRLF sequence.
+    func hasCRLFBoundary(at location: Int) -> Bool {
+        
+        guard location > 0, location < self.length else { return false }
+        
+        return self.character(at: location - 1) == 0xD && self.character(at: location) == 0xA
     }
 }

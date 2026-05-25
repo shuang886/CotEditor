@@ -768,7 +768,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld themes"
+                  "value" : "%lld definitions"
                 }
               }
             }
@@ -1033,7 +1033,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Selecciona el archivo de configuración de CotEditor que quieras importar."
+            "value" : "Selecciona el archivo de ajustes de CotEditor que quieras importar."
           }
         },
         "fr" : {
@@ -1140,7 +1140,7 @@
         "en-GB" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You can still import these items, but some settings may be incompatible."
+            "value" : "This settings archive was created by a different version of CotEditor (%@)."
           }
         },
         "es" : {
@@ -1176,7 +1176,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Dit instellingenarchief is gemaakt door een andere versie van CotEditor (%@).\n"
+            "value" : "Dit instellingenarchief is gemaakt door een andere versie van CotEditor (%@)."
           }
         },
         "pl" : {
@@ -1365,7 +1365,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Exportar los ajustes seleccionados como un archivo para poder importarlos a otros ordenadores."
+            "value" : "Exporta los ajustes seleccionados como un archivo para poder importarlos en otros ordenadores."
           }
         },
         "fr" : {
@@ -1778,7 +1778,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Definitionen für das Multiple Ersetzen"
+            "value" : "Definitionen für das multiple Ersetzen"
           }
         },
         "en" : {
@@ -1796,7 +1796,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Definiciones de reemplazo múltiples"
+            "value" : "Definiciones de reemplazo múltiple"
           }
         },
         "fr" : {

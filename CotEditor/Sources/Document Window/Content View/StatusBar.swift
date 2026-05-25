@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2014-2025 1024jp
+//  © 2014-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import StoreKit
 import Combine
 import ControlUI
 import Defaults
+import DocumentFile
 import FileEncoding
 import LineEnding
 
@@ -64,7 +65,10 @@ struct StatusBar: View {
             }
             
             if let document = self.model.document as? Document {
-                NotEditableBadge(document: document)
+                if !document.isEditable {
+                    NotEditableBadge()
+                        .transition(.opacity.animation(.linear))
+                }
                 EditorCountView(result: document.counter.result)
                     .layoutPriority(-1)
             }
@@ -77,13 +81,14 @@ struct StatusBar: View {
             
             if let document = self.model.document as? Document {
                 DocumentStatusBar(document: document)
-            } else {
-                // for spacer in case only file size is displayed
-                Color.clear.frame(width: 0)
             }
         }
         .onAppear {
-            self.model.onAppear()
+            if self.showsStatusBar {
+                self.model.onAppear()
+            } else {
+                self.model.onDisappear()
+            }
         }
         .onDisappear {
             self.model.onDisappear()
@@ -96,7 +101,8 @@ struct StatusBar: View {
             }
         }
         .subscriptionStatusTask(for: Donation.groupID) { taskState in
-            self.hasDonated = taskState.value?.map(\.state).contains(.subscribed) == true
+            self.hasDonated = taskState.value?.map(\.state)
+                .contains { [.subscribed, .inGracePeriod].contains($0) } == true
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Status Bar", table: "Document", comment: "accessibility label"))
@@ -104,17 +110,9 @@ struct StatusBar: View {
         .controlSize(.small)
         .lineLimit(1)
         .padding(.leading)
-        .modifier { content in
-            if #available(macOS 26, *) {
-                content
-                    .frame(height: 16)
-                    .padding(.vertical, 8)
-                    .containerCornerOffset(.horizontal, sizeToFit: true)
-            } else {
-                content
-                    .frame(height: 23)
-            }
-        }
+        .frame(height: 16)
+        .padding(.vertical, 8)
+        .containerCornerOffset(.horizontal, sizeToFit: true)
         .background(.windowBackground)
     }
 }
@@ -158,6 +156,8 @@ private extension StatusBar.Model {
     
     
     /// Updates observations.
+    ///
+    /// - Parameter document: The document to observe.
     private func invalidateObservation(document: DataDocument?) {
         
         (self.document as? Document)?.counter.statusBarRequirements = []
@@ -195,22 +195,11 @@ private struct CoffeeBadge: View {
 
 private struct NotEditableBadge: View {
     
-    var document: Document
-    
-    @State private var isEditable: Bool = true
-    
-    
     var body: some View {
         
-        HStack {
-            if self.isEditable == false {
-                Label(String(localized: "Not editable", table: "Document"), systemImage: "pencil.slash")
-                    .help(String(localized: "The document is not editable.", table: "Document", comment: "tooltip"))
-                    .labelStyle(.iconOnly)
-            }
-        }
-        .onReceive(self.document.$isEditable) { self.isEditable = $0 }
-        .animation(.default.speed(1.5), value: self.isEditable)
+        Label(String(localized: "Not editable", table: "Document"), systemImage: "pencil.slash")
+            .help(String(localized: "The document is not editable.", table: "Document", comment: "tooltip"))
+            .labelStyle(.iconOnly)
     }
 }
 
@@ -225,7 +214,7 @@ private struct FileSizeView: View {
         LabeledContent(String(localized: "File size", table: "Document"),
                        optional: self.size?.formatted(.byteCount(style: .file, spellsOutZero: false)))
         .monospacedDigit()
-        .labelsHidden()
+        .labelsVisibility(.hidden)
         .help(String(localized: "File size", table: "Document", comment: "tooltip"))
         .fixedSize()
     }
@@ -236,7 +225,6 @@ private struct DocumentStatusBar: View {
     
     private var document: Document
     
-    @State private var isEditable: Bool
     @State private var lineEnding: LineEnding
     @State private var fileEncoding: FileEncoding
     @State private var encodingManager: EncodingManager = .shared
@@ -245,7 +233,6 @@ private struct DocumentStatusBar: View {
     init(document: Document) {
         
         self.document = document
-        self.isEditable = document.isEditable
         self.lineEnding = document.lineEnding
         self.fileEncoding = document.fileEncoding
     }
@@ -255,7 +242,6 @@ private struct DocumentStatusBar: View {
         
         HStack(spacing: 4) {
             Divider()
-                .padding(.vertical, isLiquidGlass ? 0 : 4)
             
             Picker(String(localized: "Text Encoding", table: "Document"), selection: $fileEncoding) {
                 Section(String(localized: "Text Encoding", table: "Document")) {
@@ -263,7 +249,7 @@ private struct DocumentStatusBar: View {
                         Text(self.fileEncoding.localizedName).tag(self.fileEncoding)
                         Divider()
                     }
-                    ForEach(Array(self.encodingManager.fileEncodings.enumerated()), id: \.offset) { _, fileEncoding in
+                    ForEach(self.encodingManager.fileEncodings.enumerated(), id: \.offset) { _, fileEncoding in
                         if let fileEncoding {
                             Text(fileEncoding.localizedName).tag(fileEncoding)
                         } else {
@@ -273,25 +259,25 @@ private struct DocumentStatusBar: View {
                 }
             }
             .onChange(of: self.fileEncoding) { _, newValue in
-                self.document.askChangingEncoding(to: newValue)
+                self.document.askChangingEncoding(to: newValue) {
+                    self.fileEncoding = self.document.fileEncoding
+                }
             }
             .help(String(localized: "Text Encoding", table: "Document"))
-            .labelsHidden()
+            .labelsVisibility(.hidden)
             
             Divider()
-                .padding(.vertical, isLiquidGlass ? 0 : 4)
             
             LineEndingPicker(String(localized: "Line Endings", table: "Document"), selection: $lineEnding) { lineEnding in
                 self.document.changeLineEnding(to: lineEnding)
             }
-            .disabled(!self.isEditable)
+            .disabled(!self.document.isEditable)
             .help(String(localized: "Line Endings", table: "Document"))
             .accessibilityLabel(String(localized: "Line Endings", table: "Document"))
             .frame(width: 48)
         }
-        .onReceive(self.document.$isEditable) { self.isEditable = $0 }
-        .onReceive(self.document.$lineEnding) { self.lineEnding = $0 }
-        .onReceive(self.document.$fileEncoding) { self.fileEncoding = $0 }
+        .onChange(of: self.document.lineEnding) { _, newValue in self.lineEnding = newValue }
+        .onChange(of: self.document.fileEncoding) { _, newValue in self.fileEncoding = newValue }
     }
 }
 
@@ -311,54 +297,31 @@ private struct EditorCountView: View {
     var body: some View {
         
         TruncatingHStack {
-            if self.showsLines {
-                Text(String(localized: "CountType.lines.label", defaultValue: "Lines", table: "Document"),
-                     value: self.result.lines.formatted)
-            }
-            if self.showsCharacters {
-                Text(String(localized: "CountType.characters.label", defaultValue: "Characters", table: "Document"),
-                     value: self.result.characters.formatted)
-            }
-            if self.showsWords {
-                Text(String(localized: "CountType.words.label", defaultValue: "Words", table: "Document"),
-                     value: self.result.words.formatted)
-            }
-            if self.showsLocation {
-                Text(String(localized: "CountType.location.label", defaultValue: "Location", table: "Document"),
-                     value: self.result.location?.formatted())
-            }
-            if self.showsLine {
-                Text(String(localized: "CountType.line.label", defaultValue: "Line", table: "Document"),
-                     value: self.result.line?.formatted())
-            }
-            if self.showsColumn {
-                Text(String(localized: "CountType.column.label", defaultValue: "Column", table: "Document"),
-                     value: self.result.column?.formatted())
+            ForEach(CountType.allCases, id: \.self) { type in
+                if self.shows(type: type) {
+                    let valueText = self.result.formattedValue(type: type).map { Text($0).foregroundStyle(.primary) } ?? Text.none
+                    Text("\(type.label): \(valueText)")
+                        .accessibilityLabel("\(type.label): \(self.result.formattedValue(type: type, forAccessibility: true) ?? String(localized: "None"))")
+                }
             }
         }
         .foregroundStyle(.secondary)
         .monospacedDigit()
+        .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.updatesFrequently)
     }
-}
-
-
-private extension Text {
     
-    /// Instantiates the labeled value for status bar.
-    ///
-    /// - Parameters:
-    ///   - label: Localized label.
-    ///   - value: The content string.
-    init(_ label: String, value: String?) {
+    
+    private func shows(type: CountType) -> Bool {
         
-        let valueText = if let value {
-            Text(value).foregroundStyle(.primary)
-        } else {
-            Text.none
+        switch type {
+            case .characters: self.showsCharacters
+            case .lines: self.showsLines
+            case .words: self.showsWords
+            case .location: self.showsLocation
+            case .line: self.showsLine
+            case .column: self.showsColumn
         }
-        
-        self = Text("\(label): \(valueText)")
     }
 }
 

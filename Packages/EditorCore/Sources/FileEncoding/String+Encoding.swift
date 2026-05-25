@@ -79,6 +79,7 @@ public extension String {
     /// - Parameters:
     ///   - data: The content file.
     ///   - decodingStrategy: The text encoding to read the file.
+    /// - Returns: The decoded string and detected file encoding.
     static func string(data: Data, decodingStrategy: String.DecodingStrategy) throws(CocoaError) -> (String, FileEncoding) {
         
         // decode Data to String
@@ -88,7 +89,7 @@ public extension String {
             case .automatic(let options):
                 (content, encoding) = try String.string(data: data, options: options)
             case .specific(let readingEncoding):
-                guard let string = String(bomCapableData: data, encoding: readingEncoding) else {
+                guard let string = String(data: data, encoding: readingEncoding) else {
                     throw CocoaError(.fileReadInapplicableStringEncoding, userInfo: [NSStringEncodingErrorKey: readingEncoding.rawValue])
                 }
                 content = string
@@ -126,9 +127,9 @@ extension String {
         
         // check BOMs
         for bom in Unicode.BOM.allCases {
-            if options.candidates.contains(bom.encoding),
+            if options.candidates.contains(where: bom.candidateEncodings.contains),
                data.starts(with: bom.sequence),
-               let string = String(bomCapableData: data, encoding: bom.encoding)
+               let string = String(data: data, encoding: bom.encoding)
             {
                 return (string, bom.encoding)
             }
@@ -137,7 +138,7 @@ extension String {
         // try interpreting with xattr encoding
         if let xattrEncoding = options.xattrEncoding {
             // just trust xattr encoding if the content is empty
-            if let string = data.isEmpty ? "" : String(bomCapableData: data, encoding: xattrEncoding) {
+            if let string = data.isEmpty ? "" : String(data: data, encoding: xattrEncoding) {
                 return (string, xattrEncoding)
             }
         }
@@ -146,7 +147,7 @@ extension String {
         if options.considersDeclaration,
            let encoding = data.scanEncodingDeclaration(),
            options.candidates.contains(encoding),
-           let string = String(bomCapableData: data, encoding: encoding)
+           let string = String(data: data, encoding: encoding)
         {
             return (string, encoding)
         }
@@ -159,25 +160,6 @@ extension String {
         }
         
         throw CocoaError(.fileReadUnknownStringEncoding)
-    }
-    
-    
-    /// Decodes data and remove UTF-8 BOM if exists.
-    ///
-    /// cf. <https://bugs.swift.org/browse/SR-10173>
-    @available(macOS, deprecated: 26, message: "The issue has been resolved since macOS 26.")
-    init?(bomCapableData data: Data, encoding: String.Encoding) {
-        
-        guard #unavailable(macOS 26) else {
-            self.init(data: data, encoding: encoding)
-            return
-        }
-        
-        let bom = Unicode.BOM.utf8.sequence
-        let hasUTF8WithBOM = (encoding == .utf8 && data.starts(with: bom))
-        let bomFreeData = hasUTF8WithBOM ? data[bom.count...] : data
-        
-        self.init(data: bomFreeData, encoding: encoding)
     }
 }
 
@@ -210,20 +192,43 @@ extension Data {
     /// - Returns: The detected string encoding, or `nil` if none is found.
     func scanEncodingDeclaration() -> String.Encoding? {
         
+        struct EncodingDeclaration {
+            
+            var range: Range<String.Index>
+            var encodingName: Substring
+        }
+        
         guard
             !self.isEmpty,
             // scan only the first 1024 bytes to fulfill the largest spec (HTML)
-            let string = String(data: self.prefix(1024), encoding: .isoLatin1),
-            let match = string.prefixMatch(of: /@charset "(?<encoding>[-_.a-zA-Z0-9]+)";/)
-                ?? string
-                    .split(separator: /\R/, maxSplits: 3, omittingEmptySubsequences: false)
-                    .prefix(2)  // first 2 lines
-                    .lazy
-                    .compactMap({ $0.firstMatch(of: /coding[:=] *["']? *(?<encoding>[-_.a-zA-Z0-9]+)/) }).first
-                ?? string.firstMatch(of: /^[\x00-\x7F]*\scharset\s*= *["'](?<encoding>[-_.a-zA-Z0-9]+)["']/.ignoresCase())
+            let string = String(data: self.prefix(1024), encoding: .isoLatin1)
         else { return nil }
         
-        let encodingName = match.encoding
+        let cssDeclaration = string.prefixMatch(of: /@charset "(?<encoding>[-_.a-zA-Z0-9]+)";/)
+            .map { EncodingDeclaration(range: $0.range, encodingName: $0.encoding) }
+        
+        let commentDeclaration = string
+            .split(separator: /\R/, maxSplits: 3, omittingEmptySubsequences: false)
+            .prefix(2)  // first 2 lines
+            .lazy
+            .compactMap { line in
+                line.firstMatch(of: /(?:(?:file)?encoding|coding)[:=] *["']? *(?<encoding>[-_.a-zA-Z0-9]+)/)
+                    .map { EncodingDeclaration(range: $0.range, encodingName: $0.encoding) }
+            }
+            .first
+        
+        let htmlDeclaration = string.firstMatch(of: /\scharset\s*= *["'](?<encoding>[-_.a-zA-Z0-9]+)["']/.ignoresCase())
+            .flatMap { match in
+                string[..<match.range.lowerBound].unicodeScalars.allSatisfy(\.isASCII)
+                    ? EncodingDeclaration(range: match.range, encodingName: match.encoding)
+                    : nil
+            }
+        
+        guard let encodingName = [cssDeclaration, commentDeclaration, htmlDeclaration]
+            .compactMap(\.self)
+            .min(by: { $0.range.lowerBound < $1.range.lowerBound })?
+            .encodingName
+        else { return nil }
         
         let cfEncoding = CFStringConvertIANACharSetNameToEncoding(encodingName as CFString)
         if cfEncoding != kCFStringEncodingInvalidId {

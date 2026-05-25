@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2018-2025 1024jp
+//  © 2018-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -38,8 +38,7 @@ struct PatternSortView: View {
     }
     
     
-    var dismiss: () -> Void = { }
-    
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.resetFocus) private var resetFocus
     
     @Namespace private var namespace
@@ -84,7 +83,7 @@ struct PatternSortView: View {
                         .font(.custom(self.sampleFontName ?? "", size: 0))
                         .truncationMode(.tail)
                         .lineLimit(1)
-                        .help(String(localized: "Sample line to check which part in a line will be used for sort comparison.", table: "PatternSort", comment: "tooltip"))
+                        .help(String(localized: "Sample line to check which part of a line will be used for sorting.", table: "PatternSort", comment: "tooltip"))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }.padding(.bottom)
             }
@@ -94,7 +93,7 @@ struct PatternSortView: View {
                     Text("Sort key:", tableName: "PatternSort")
                         .gridColumnAlignment(.trailing)
                     
-                    VStack(alignment: .leading, spacing: isLiquidGlass ? nil : 6) {
+                    VStack(alignment: .leading) {
                         Picker(selection: $sortKey.animation()) {
                             ForEach(SortKey.allCases, id: \.self) {
                                 Text($0.label)
@@ -125,7 +124,7 @@ struct PatternSortView: View {
                 GridRow {
                     Text("Sort option:", tableName: "PatternSort")
                     
-                    VStack(alignment: .leading, spacing: isLiquidGlass ? nil : 6) {
+                    VStack(alignment: .leading) {
                         Toggle(String(localized: "Ignore case", table: "PatternSort"),
                                isOn: $options.ignoresCase)
                         Toggle(String(localized: "Respect language rules", table: "PatternSort"),

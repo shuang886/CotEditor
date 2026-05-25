@@ -9,7 +9,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2015-2025 1024jp
+//  © 2015-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -49,11 +49,12 @@ public extension String {
         guard
             newLocation >= 0,
             newLength >= 0,
-            newLocation <= wholeLength
+            newLocation <= wholeLength,
+            newLength <= wholeLength - newLocation
         else { return nil }
         
         let lowerBound = self.index(self.startIndex, offsetBy: newLocation)
-        let upperBound = self.index(lowerBound, offsetBy: newLength, limitedBy: self.endIndex) ?? self.endIndex
+        let upperBound = self.index(lowerBound, offsetBy: newLength)
         
         return NSRange(lowerBound..<upperBound, in: self)
     }
@@ -62,13 +63,13 @@ public extension String {
     /// Returns the character range for a line range that allows negative values.
     ///
     /// - Note:
-    ///   The `location` of the passed-in range is 1-based. Passing a fuzzy range whose location is `0` returns `nil`.
-    ///   The last line ending is included in the return value.
+    ///   The `location` of the passed-in range is 1-based. A location of `0` or beyond the last line returns an empty range.
+    ///   The final line ending is included in the return value when `includingLineEnding` is `true`.
     ///
     /// - Parameters:
     ///   - lineRange: The line range that allows also negative values.
     ///   - includingLineEnding: Whether to include the final line ending in the return value.
-    /// - Returns: A character range, or `nil` if the given value is out of bounds.
+    /// - Returns: A character range, or `nil` if the given line range cannot be resolved.
     func rangeForLine(in lineRange: FuzzyRange, includingLineEnding: Bool = true) -> NSRange? {
         
         let length = (self as NSString).length
@@ -87,7 +88,11 @@ public extension String {
             default: lineRange.length - 1
         }
         
-        guard lineRanges.indices.contains(newLocation + newLength) else { return nil }
+        guard
+            newLength >= 0,
+            lineRanges.indices.contains(newLocation),
+            lineRanges.indices.contains(newLocation + newLength)
+        else { return nil }
         
         let firstLineRange = lineRanges[newLocation]
         let lastLineRange = lineRanges[newLocation + newLength]
@@ -122,13 +127,13 @@ public extension String {
 }
 
 
-public enum FuzzyLocationError: Error, Equatable {
+public enum FuzzyLocationError: LocalizedError, Equatable {
     
     case invalidLine(Int)
     case invalidColumn(Int)
     
     
-    var localizedDescription: String {
+    public var errorDescription: String? {
         
         switch self {
             case .invalidLine(let line):

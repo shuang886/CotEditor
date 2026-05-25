@@ -1,5 +1,5 @@
 //
-//  String+NSRange.swift
+//  String.swift
 //  StringUtils
 //
 //  CotEditor
@@ -68,6 +68,8 @@ public extension NSString {
     /// - Returns: The NSRange-based character index just before the given `location`, or `0` when `location` is the first index.
     final func index(before location: Int) -> Int {
         
+        assert((0...self.length).contains(location))
+        
         guard location > 0 else { return 0 }
         
         // avoid returning index between CRLF
@@ -84,7 +86,9 @@ public extension NSString {
     /// - Returns: The NSRange-based character index just after the given `location`, or `length` when `location` is the last index.
     final func index(after location: Int) -> Int {
         
-        guard location < self.length - 1 else { return self.length }
+        assert((0...self.length).contains(location))
+        
+        guard location + 1 < self.length else { return self.length }
         
         // avoid returning index between CRLF
         let index = location
@@ -96,6 +100,8 @@ public extension NSString {
     
     /// Finds and returns ranges of passed-in substring with the given range of receiver.
     ///
+    /// If `searchString` is empty, this method returns an empty array.
+    ///
     /// - Parameters:
     ///   - searchString: The string for which to search.
     ///   - options: A mask specifying search options.
@@ -103,17 +109,27 @@ public extension NSString {
     /// - Returns: An array of ranges where `searchString` occurs within `searchRange`.
     final func ranges(of searchString: String, options: NSString.CompareOptions = .literal, range searchRange: NSRange? = nil) -> [NSRange] {
         
+        guard !searchString.isEmpty else { return [] }
+        
         let searchRange = searchRange ?? self.range
+        
+        guard !searchRange.isNotFound else { return [] }
+        
         var ranges: [NSRange] = []
         
         var location = searchRange.location
-        while location != NSNotFound {
+        while location <= searchRange.upperBound {
             let range = self.range(of: searchString, options: options, range: NSRange(location..<searchRange.upperBound))
-            location = range.upperBound
             
             guard range.location != NSNotFound else { break }
             
             ranges.append(range)
+            
+            location = if range.isEmpty {
+                range.upperBound < searchRange.upperBound ? self.index(after: range.upperBound) : NSNotFound
+            } else {
+                range.upperBound
+            }
         }
         
         return ranges
@@ -121,6 +137,9 @@ public extension NSString {
     
     
     /// Returns the line range containing the given location.
+    ///
+    /// - Parameter location: The character location.
+    /// - Returns: The line range containing the given location.
     final func lineRange(at location: Int) -> NSRange {
         
         self.lineRange(for: NSRange(location: location, length: 0))
@@ -128,6 +147,9 @@ public extension NSString {
     
     
     /// Returns the line content range containing the given location.
+    ///
+    /// - Parameter location: The character location.
+    /// - Returns: The line contents range containing `location`.
     final func lineContentsRange(at location: Int) -> NSRange {
         
         self.lineContentsRange(for: NSRange(location: location, length: 0))
@@ -229,7 +251,7 @@ public extension NSString {
             count += 1
         }
         
-        if self.character(at: location - 1).isNewline {
+        if self.character(at: location - 1).isNewline, !self.isInsideCRLF(at: location) {
             count += 1
         }
         
@@ -246,10 +268,7 @@ public extension NSString {
         
         guard
             !range.isNotFound,
-            range.upperBound < self.length,
-            range.upperBound > 0,
-            self.character(at: range.upperBound - 1) == 0xD,  // CR
-            self.character(at: range.upperBound) == 0xA       // LF
+            self.isInsideCRLF(at: range.upperBound)
         else { return range }
         
         return range.isEmpty
@@ -314,6 +333,22 @@ public extension NSString {
 }
 
 
+extension NSString {
+    
+    /// Returns whether the given location is between CR and LF in a CRLF pair.
+    ///
+    /// - Parameter location: The UTF-16 location to test.
+    /// - Returns: `true` if the location is after CR and before LF.
+    final func isInsideCRLF(at location: Int) -> Bool {
+        
+        location > 0
+            && location < self.length
+            && self.character(at: location - 1) == 0xD  // CR
+            && self.character(at: location) == 0xA      // LF
+    }
+}
+
+
 public extension unichar {
     
     /// A Boolean value indicating whether this character represents a newline.
@@ -322,7 +357,7 @@ public extension unichar {
     var isNewline: Bool {
         
         switch self {
-            case 0x000A, 0x000B, 0x000C, 0x000D, 0x0085, 0x2028, 0x2029: true
+            case 0xA, 0xB, 0xC, 0xD, 0x85, 0x2028, 0x2029: true
             default: false
         }
     }

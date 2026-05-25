@@ -24,8 +24,6 @@
 //  limitations under the License.
 //
 
-import Foundation
-
 public struct QuotePairRule: Equatable, Sendable {
     
     public var pair: SymbolPair
@@ -46,11 +44,17 @@ public extension Sequence where Element == QuotePairRule {
     
     /// An array of distinct rules for quote matching by keeping ordering.
     ///
-    /// Matching distinguishes rules by symbol pair and escape behavior.
+    /// Matching distinguishes rules by symbol pair and escape behavior, and merges prefixes.
     var distinctForMatching: [QuotePairRule] {
         
         self.reduce(into: []) { result, rule in
-            if !result.contains(where: { $0.pair == rule.pair && $0.escapeCharacter == rule.escapeCharacter }) {
+            if let index = result.firstIndex(where: { $0.pair == rule.pair && $0.escapeCharacter == rule.escapeCharacter }) {
+                if result[index].prefixes.isEmpty || rule.prefixes.isEmpty {
+                    result[index].prefixes = []
+                } else {
+                    result[index].prefixes += rule.prefixes.filter { !result[index].prefixes.contains($0) }
+                }
+            } else {
                 result.append(rule)
             }
         }
@@ -58,11 +62,11 @@ public extension Sequence where Element == QuotePairRule {
 }
 
 
-public extension StringProtocol {
+public extension String {
     
     /// Finds a quote-pair range at the given index that matches one of the given candidates.
     ///
-    /// If multiple rules match, the shortest range is returned.
+    /// If multiple rules match, a prefix-matched rule is preferred; otherwise the shortest range is returned.
     ///
     /// - Parameters:
     ///   - index: The character index of the quote character to find the mate.
@@ -70,21 +74,26 @@ public extension StringProtocol {
     /// - Returns: A matching quote-pair range, or `nil` if not found.
     func rangeOfQuotePair(at index: Index, candidates: [QuotePairRule]) -> ClosedRange<Index>? {
         
-        guard !candidates.isEmpty else { return nil }
+        guard !candidates.isEmpty, !self.isEmpty else { return nil }
         
         let character = self[index]
         
         return candidates
             .filter { $0.pair.begin == character || $0.pair.end == character }
-            .compactMap { candidate -> (range: ClosedRange<Index>, distance: Int)? in
+            .compactMap { candidate -> (range: ClosedRange<Index>, distance: Int, hasPrefix: Bool)? in
                 guard
-                    let range = self.rangeOfSymbolPair(at: index, candidates: [candidate.pair], escapeCharacter: candidate.escapeCharacter),
-                    candidate.prefixes.isEmpty || candidate.prefixes.contains(where: self[..<range.lowerBound].hasSuffix)
+                    let range = self.rangeOfSymbolPair(at: index, candidates: [candidate.pair], escapeCharacter: candidate.escapeCharacter)
                 else { return nil }
                 
-                return (range, self.distance(from: range.lowerBound, to: range.upperBound))
+                let hasPrefix = candidate.prefixes.contains {
+                    self[..<range.lowerBound].hasSuffix($0)
+                }
+                
+                guard candidate.prefixes.isEmpty || hasPrefix else { return nil }
+                
+                return (range, self.distance(from: range.lowerBound, to: range.upperBound), hasPrefix)
             }
-            .min { $0.distance < $1.distance }?
+            .min { ($0.hasPrefix != $1.hasPrefix) ? $0.hasPrefix : $0.distance < $1.distance }?
             .range
     }
 }

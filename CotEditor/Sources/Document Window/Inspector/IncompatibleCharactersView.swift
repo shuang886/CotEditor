@@ -38,14 +38,23 @@ struct IncompatibleCharactersView: View {
         
         typealias Item = ValueRange<IncompatibleCharacter>
         
+        enum State: Equatable {
+            
+            case idle
+            case scanning(initial: Bool)
+        }
+        
         
         var items: [Item] = []
-        private(set) var isScanning = false
+        var sortOrder: [KeyPathComparator<Item>] = []  { didSet { self.items.sort(using: self.sortOrder) } }
+        private(set) var state: State = .idle
         
         private var document: Document?
+        private var scanRevision = 0
         
-        private(set) var task: Task<Void, any Error>?
-        private var observers: Set<AnyCancellable> = []
+        private var task: Task<Void, any Error>?
+        private var encodingObserver: Task<Void, Never>?
+        private var textEditingObserver: AnyCancellable?
     }
     
     
@@ -62,11 +71,11 @@ struct IncompatibleCharactersView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Incompatible Characters", tableName: "Document",
                  comment: "section title in inspector")
-                .font(.system(size: 12, weight: isLiquidGlass ? .semibold : .bold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .accessibilityRemoveTraits(.isHeader)
             
-            if self.model.isScanning {
+            if self.model.state == .scanning(initial: true) {
                 Text("Scanning incompatible characters…", tableName: "Document")
             } else if !self.model.items.isEmpty {
                 Text("Found \(self.model.items.count) incompatible characters.", tableName: "Document",
@@ -89,7 +98,12 @@ struct IncompatibleCharactersView: View {
                     
                     TableColumn(String(localized: "Character", table: "Document", comment: "table column header"), value: \.value.character) {
                         let character = $0.value.character
-                        let invisibleCategories: Set<Unicode.GeneralCategory> = [.control, .spaceSeparator, .lineSeparator]
+                        let invisibleCategories: Set<Unicode.GeneralCategory> = [
+                            .control,
+                            .spaceSeparator,
+                            .lineSeparator,
+                            .paragraphSeparator,
+                        ]
                         
                         if let unicode = character.unicodeScalars.first,
                            invisibleCategories.contains(unicode.properties.generalCategory) {
@@ -111,7 +125,7 @@ struct IncompatibleCharactersView: View {
                 }
                 .onChange(of: self.sortOrder) { _, newValue in
                     withAnimation {
-                        self.model.items.sort(using: newValue)
+                        self.model.sortOrder = newValue
                     }
                 }
                 .tableStyle(.bordered)
@@ -119,9 +133,11 @@ struct IncompatibleCharactersView: View {
             }
         }
         .onDisappear {
-            self.model.task?.cancel()
+            self.selection = nil
+            self.model.updateDocument(nil)
         }
         .onChange(of: self.document, initial: true) { _, newValue in
+            self.selection = nil
             self.model.updateDocument(newValue)
         }
         .accessibilityElement(children: .contain)
@@ -165,6 +181,9 @@ private extension IncompatibleCharactersView.Model {
     /// - Parameter document: The new document.
     func updateDocument(_ document: Document?) {
         
+        guard self.document !== document else { return }
+        
+        self.clearScanResult()
         self.document = document
         self.invalidateObservation()
     }
@@ -175,70 +194,95 @@ private extension IncompatibleCharactersView.Model {
     /// Updates observations.
     private func invalidateObservation() {
         
-        self.observers.removeAll()
+        self.textEditingObserver?.cancel()
+        self.encodingObserver?.cancel()
         
-        if let document {
-            self.invalidateIncompatibleCharacters()
-            
-            NotificationCenter.default.publisher(for: NSTextStorage.didProcessEditingNotification, object: document.textStorage)
-                .map { $0.object as! NSTextStorage }
-                .filter { $0.editedMask.contains(.editedCharacters) }
-                .debounce(for: .seconds(0.3), scheduler: RunLoop.current)
-                .sink { [weak self] _ in self?.invalidateIncompatibleCharacters() }
-                .store(in: &self.observers)
-            document.$fileEncoding
-                .map(\.encoding)
-                .removeDuplicates()
-                .sink { [weak self] _ in self?.invalidateIncompatibleCharacters() }
-                .store(in: &self.observers)
-            
-        } else {
-            self.task?.cancel()
-            self.items.removeAll()
-            self.isScanning = false
+        guard let document else { return }
+        
+        self.invalidateIncompatibleCharacters(initial: true)
+        
+        self.textEditingObserver = NotificationCenter.default.publisher(for: NSTextStorage.didProcessEditingNotification, object: document.textStorage)
+            .map { $0.object as! NSTextStorage }
+            .filter { $0.editedMask.contains(.editedCharacters) }
+            .debounce(for: .seconds(0.3), scheduler: RunLoop.current)
+            .sink { [weak self] _ in self?.invalidateIncompatibleCharacters() }
+        self.encodingObserver = Task { [weak self] in
+            for await _ in Observations({ document.fileEncoding.encoding }) {
+                self?.invalidateIncompatibleCharacters()
+            }
         }
+    }
+    
+    
+    /// Clears current scan result and editor highlights.
+    private func clearScanResult() {
+        
+        self.task?.cancel()
+        self.scanRevision += 1
+        
+        if !self.items.isEmpty {
+            // clear the incompatible-character highlights
+            self.document?.textView?.updateBackgroundColor(.unemphasizedSelectedTextBackgroundColor, ranges: [])
+        }
+        
+        self.items.removeAll()
+        self.state = .idle
     }
     
     
     /// Updates incompatible characters.
-    private func invalidateIncompatibleCharacters() {
+    ///
+    /// - Parameter initial: Whether this is an initial scan. If `false`, the previous result is kept visible during the rescan.
+    private func invalidateIncompatibleCharacters(initial: Bool = false) {
+        
+        guard
+            let document,
+            !document.fileEncoding.encoding.isUnicodeEncoding,
+            document.textStorage.length > 0
+        else {
+            self.clearScanResult()
+            return
+        }
         
         self.task?.cancel()
+        self.state = .scanning(initial: initial)
+        self.scanRevision += 1
+        let scanRevision = self.scanRevision
+        
+        let string = document.textStorage.string.immutable
+        let encoding = document.fileEncoding.encoding
+        
         self.task = Task {
-            let items = try await self.scan()
-            self.items = items
-            self.document?.textView?.updateBackgroundColor(.unemphasizedSelectedTextBackgroundColor, ranges: items.map(\.range))
+            defer {
+                if self.scanRevision == scanRevision {
+                    self.state = .idle
+                }
+            }
+            
+            let items = try await Self.scan(string, encoding: encoding)
+            try Task.checkCancellation()
+            
+            guard
+                self.scanRevision == scanRevision,
+                self.document === document
+            else { return }
+            
+            self.items = items.sorted(using: self.sortOrder)
+            document.textView?.updateBackgroundColor(.unemphasizedSelectedTextBackgroundColor, ranges: items.map(\.range))
         }
     }
     
     
-    /// Scans the characters incompatible with the current encoding in the document content.
+    /// Scans the string for characters incompatible with the target encoding.
     ///
+    /// - Parameters:
+    ///   - string: The string to scan.
+    ///   - encoding: The target encoding.
     /// - Returns: An array of Item.
     /// - Throws: `CancellationError`
-    private func scan() async throws -> [Item] {
+    @concurrent private static func scan(_ string: String, encoding: String.Encoding) async throws -> [Item] {
         
-        assert(Thread.isMainThread)
-        
-        guard let document else { return [] }
-        
-        let string = document.textStorage.string
-        let encoding = document.fileEncoding.encoding
-        
-        guard !string.canBeConverted(to: encoding) else { return [] }
-        
-        self.isScanning = true
-        defer { self.isScanning = false }
-        
-        let task: Task<[Item], any Error> = .detached { [string = string.immutable] in
-            try string.charactersIncompatible(with: encoding)
-        }
-        
-        return try await withTaskCancellationHandler {
-            try await task.value
-        } onCancel: {
-            task.cancel()
-        }
+        try string.charactersIncompatible(with: encoding)
     }
 }
 

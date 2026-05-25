@@ -1,6 +1,6 @@
 //
 //  FilePermissions+FormatStyle.swift
-//  FilePermissions
+//  DocumentFile
 //
 //  CotEditor
 //  https://coteditor.com
@@ -9,7 +9,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2023-2025 1024jp
+//  © 2023-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -32,13 +32,13 @@ public extension FilePermissions {
         
         public enum Style: Codable, Sendable {
             
-            /// Octal presentation like `644`
+            /// Octal presentation like `644`.
             case octal
             
-            /// Symbolic presentation like `-rw-r--r-`
+            /// Symbolic presentation like `-rw-r--r--`.
             case symbolic
             
-            /// Both octal and symbolic presentations like `644 (-rw-r--r-)`
+            /// Both octal and symbolic presentations like `644 (-rw-r--r--)`.
             case full
         }
         

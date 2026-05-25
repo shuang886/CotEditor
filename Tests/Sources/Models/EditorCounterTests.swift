@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2020-2025 1024jp
+//  © 2020-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 
 import Foundation
 import Testing
+import LineEnding
 @testable import CotEditor
 
 @MainActor final class EditorCounterTests {
@@ -72,18 +73,14 @@ import Testing
         let source = Source(string: self.testString, selectedRange: NSRange(11..<21))
         
         let counter = EditorCounter()
+        defer { counter.cancel() }
         counter.source = { source }
-        counter.updatesAll = true
-        counter.invalidateContent()
-        counter.invalidateSelection()
         
-        await withCheckedContinuation { continuation in
-            withObservationTracking {
-                _ = counter.result.column
-            } onChange: {
-                continuation.resume()
-            }
-        }
+        counter.updatesAll = true
+        
+        let column = await Observations { counter.result.column }.first { @MainActor in $0 != nil }
+        
+        #expect(column == 0)
         
         #expect(counter.result.lines.entire == 3)
         #expect(counter.result.characters.entire == 31)
@@ -104,21 +101,20 @@ import Testing
         let source = Source(string: self.testString, selectedRange: NSRange(11..<21))
         
         let counter = EditorCounter()
+        defer { counter.cancel() }
         counter.source = { source }
         counter.updatesAll = true
+        counter.cancel()
+        
         counter.invalidateSelection()
+        
+        let column = await Observations { counter.result.column }.first { @MainActor in $0 != nil }
+        
+        #expect(column == 0)
         
         #expect(counter.result.lines.entire == nil)
         #expect(counter.result.characters.entire == nil)
         #expect(counter.result.words.entire == nil)
-        
-        await withCheckedContinuation { continuation in
-            withObservationTracking {
-                _ = counter.result.column
-            } onChange: {
-                continuation.resume()
-            }
-        }
         
         #expect(counter.result.lines.selected == 1)
         #expect(counter.result.characters.selected == 9)
@@ -135,18 +131,14 @@ import Testing
         let source = Source(string: "a\r\nb", selectedRange: NSRange(1..<4))
         
         let counter = EditorCounter()
+        defer { counter.cancel() }
         counter.source = { source }
-        counter.updatesAll = true
-        counter.invalidateContent()
-        counter.invalidateSelection()
         
-        await withCheckedContinuation { continuation in
-            withObservationTracking {
-                _ = counter.result.column
-            } onChange: {
-                continuation.resume()
-            }
-        }
+        counter.updatesAll = true
+        
+        let column = await Observations { counter.result.column }.first { @MainActor in $0 != nil }
+        
+        #expect(column == 1)
         
         #expect(counter.result.lines.entire == 2)
         #expect(counter.result.characters.entire == 3)
@@ -162,19 +154,83 @@ import Testing
     }
     
     
-    @Test func formatEditorCount() {
+    @Test func entireLineCountUsesLineRangeCalculator() async throws {
         
-        var count = EditorCount()
+        let string = "a\nb\n"
+        let lineCounter = LineCounter(string: string)
+        let source = Source(string: string, selectedRange: NSRange(location: string.utf16.count, length: 0))
         
-        #expect(count.formatted == nil)
+        let counter = EditorCounter()
+        defer { counter.cancel() }
+        counter.source = { source }
+        counter.lineRangeCalculator = lineCounter
         
-        count.entire = 1000
-        #expect(count.formatted == "1,000")
+        counter.statusBarRequirements = [.lines]
         
-        count.selected = 100
-        #expect(count.formatted == "1,000 (100)")
+        _ = await Observations { counter.result.lines.entire }.first { @MainActor in $0 != nil }
         
-        count.entire = nil
-        #expect(count.formatted == nil)
+        #expect(counter.result.lines.entire == 2)
+        #expect(!lineCounter.lineEndings.isEmpty)
+    }
+    
+    
+    @Test func currentLineUsesLineRangeCalculator() async throws {
+        
+        let string = "a\n🐕b\nc"
+        let lineCounter = LineCounter(string: string)
+        let source = Source(string: string, selectedRange: (string as NSString).range(of: "b"))
+        
+        let counter = EditorCounter()
+        defer { counter.cancel() }
+        counter.source = { source }
+        counter.lineRangeCalculator = lineCounter
+        
+        counter.statusBarRequirements = [.line]
+        
+        let line = await Observations { counter.result.line }.first { @MainActor in $0 != nil }
+        
+        #expect(line == 2)
+        #expect(counter.result.line == 2)
+        #expect(!lineCounter.lineEndings.isEmpty)
+    }
+    
+    
+    @Test func countTypeCases() {
+        
+        #expect(CountType.allCases == [.lines, .characters, .words, .location, .line, .column])
+        #expect(CountType.countCases == [.lines, .characters, .words])
+        #expect(CountType.positionCases == [.location, .line, .column])
+        
+        #expect(CountType.lines.counterTypes == .lines)
+        #expect(CountType.characters.counterTypes == .characters)
+        #expect(CountType.words.counterTypes == .words)
+        #expect(CountType.location.counterTypes == .location)
+        #expect(CountType.line.counterTypes == .line)
+        #expect(CountType.column.counterTypes == .column)
+    }
+    
+    
+    @Test func formatCountValue() {
+        
+        let result = EditorCounter.Result()
+        
+        #expect(result.formattedValue(type: .characters) == nil)
+        
+        result.characters.entire = 1000
+        #expect(result.formattedValue(type: .characters) == "1,000")
+        
+        result.characters.selected = 100
+        #expect(result.formattedValue(type: .characters) == "1,000 (100)")
+        
+        result.characters.entire = nil
+        #expect(result.formattedValue(type: .characters) == nil)
+        
+        result.location = 42
+        result.line = 3
+        result.column = 12
+        
+        #expect(result.formattedValue(type: .location) == "42")
+        #expect(result.formattedValue(type: .line) == "3")
+        #expect(result.formattedValue(type: .column) == "12")
     }
 }

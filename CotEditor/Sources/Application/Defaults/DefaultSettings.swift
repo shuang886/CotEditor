@@ -27,7 +27,6 @@
 import AppKit.NSFont
 import Defaults
 import StringUtils
-import SyntaxFormat
 
 struct DefaultSettings {
     
@@ -58,7 +57,6 @@ struct DefaultSettings {
             // Window
             .windowTabbing: -1,  // = Respect System Setting
             .showLineNumbers: true,
-            .showLineNumberSeparator: false,
             .showInvisibles: false,
             .showInvisibleNewLine: true,
             .showInvisibleTab: true,
@@ -106,6 +104,7 @@ struct DefaultSettings {
             .saveUTF8BOM: false,
             .referToEncodingTag: true,
             .syntax: "Plain Text",
+            .hiddenSyntaxes: [],
             
             // Snippets
             .fileDropArray: [
@@ -159,6 +158,9 @@ struct DefaultSettings {
             .findRegexIsMultiline: true,
             .findRegexUsesUnicodeBoundaries: false,
             .findRegexUnescapesReplacementString: true,
+            .folderFindUsesRegularExpression: false,
+            .folderFindIgnoresCase: false,
+            .folderFindIncludesHiddenFiles: false,
             
             // Advanced Character Count
             .countUnit: CharacterCountOptions.CharacterUnit.graphemeCluster.rawValue,

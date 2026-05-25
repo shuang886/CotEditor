@@ -66,10 +66,11 @@ extension MultiCursorEditing {
         assert(!replacementRanges.isEmpty)
         
         let replacementStrings = [String](repeating: string, count: replacementRanges.count)
-        
-        self.setSelectedRangesWithUndo(self.insertionRanges)
+        let undoRanges = self.insertionRanges
         
         guard self.shouldChangeText(inRanges: replacementRanges as [NSValue], replacementStrings: replacementStrings) else { return false }
+        
+        self.setSelectedRangesWithUndo(undoRanges)
         
         let attributedString = NSAttributedString(string: string, attributes: self.typingAttributes)
         let stringLength = attributedString.length
@@ -104,10 +105,12 @@ extension MultiCursorEditing {
         
         guard ranges.count > 1 else { return false }
         
-        let deletionRanges: [NSRange] = ranges
+        let rangesToDelete: [NSRange] = ranges
             .map { range -> NSRange in
-                guard range.location > 0 else { return range }
-                guard range.isEmpty else { return range }
+                guard
+                    range.isEmpty,
+                    forward ? range.location < self.string.length : range.location > 0
+                else { return range }
                 
                 if !forward,
                    let self = self as? any Indenting,
@@ -119,13 +122,23 @@ extension MultiCursorEditing {
                 
                 return (self.string as NSString).rangeOfComposedCharacterSequence(at: location)
             }
-            // remove overlappings
+        
+        // remove overlappings
+        let deletionRanges: [NSRange] = rangesToDelete
+            .filter { !$0.isEmpty }
             .compactMap(Range.init)
             .reduce(into: IndexSet()) { $0.insert(integersIn: $1) }
             .rangeView
             .map(NSRange.init)
+        let preservedRanges = rangesToDelete
+            .filter(\.isEmpty)
+            .filter { range in !deletionRanges.contains { $0.touches(range.location) } }
+        let replacementRanges = (deletionRanges + preservedRanges)
+            .sorted(using: KeyPathComparator(\.location))
         
-        return self.insertText("", replacementRanges: deletionRanges)
+        guard replacementRanges.contains(where: { !$0.isEmpty }) else { return false }
+        
+        return self.insertText("", replacementRanges: replacementRanges)
     }
     
     
@@ -149,7 +162,8 @@ extension MultiCursorEditing {
         guard let layoutManager = self.layoutManager else { assertionFailure(); return nil }
         
         let startIndex = self.characterIndexForInsertion(at: startPoint)
-        let numberOfRows = layoutManager.numberOfWrappedRows(at: startIndex, affinity: affinity)
+        let startGlyphIndex = layoutManager.glyphIndexForCharacter(at: startIndex)
+        let numberOfRows = layoutManager.numberOfWrappedRows(at: startGlyphIndex, affinity: affinity)
         
         // possibility of the very last insertion point in the extra line fragment
         var containsLastLine = {
@@ -168,11 +182,11 @@ extension MultiCursorEditing {
         let lineStartRange = (self.string as NSString).lineStartIndex(at: range.location)
         
         var locations: [Int] = []
-        (self.string as NSString).enumerateSubstrings(in: NSRange(lineStartRange..<range.upperBound), options: [.byLines, .substringNotRequired]) { [unowned self] _, lineRange, _, _ in
+        (self.string as NSString).enumerateSubstrings(in: NSRange(lineStartRange..<range.upperBound), options: [.byLines, .substringNotRequired]) { _, lineRange, _, _ in
             let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
             
             var count = 0
-            layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { [unowned self] _, usedRect, _, lineGlyphRange, stop in
+            layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, lineGlyphRange, stop in
                 guard count == numberOfRows else {
                     count += 1
                     return
@@ -358,6 +372,11 @@ extension MultiCursorEditing {
         // get number of wrapped lines where the base insertion point (the most opposite side of growing direction) is on
         let glyphRanges = insertionRanges.map { layoutManager.glyphRange(forCharacterRange: $0, actualCharacterRange: nil) }
         let baseIndex = (affinity == .downstream) ? glyphRanges.last!.lowerBound : glyphRanges.first!.upperBound
+        
+        guard layoutManager.isValidGlyphIndex(baseIndex) ||
+                (baseIndex == layoutManager.numberOfGlyphs && baseIndex > 0)
+        else { return }
+        
         let wrappedRow = layoutManager.numberOfWrappedRows(at: baseIndex, affinity: self.selectionAffinity)
         
         // filter existing selections to remove ones not in the same row
@@ -368,13 +387,18 @@ extension MultiCursorEditing {
         
         // get new visual line to append
         // -> Use line fragment to allow placing insertion points even when the line is shorter than the origin insertion columns.
-        let newLineRect: CGRect = switch affinity {
+        let newLineRect: CGRect
+        switch affinity {
             case .downstream:
-                layoutManager.lineFragmentRect(forGlyphAt: layoutManager.glyphIndexForCharacter(at: lastLineRange.lowerBound - 1), wrappedRow: wrappedRow)
-            case .upstream where layoutManager.isValidGlyphIndex(lastLineRange.upperBound):
-                layoutManager.lineFragmentRect(forGlyphAt: layoutManager.glyphIndexForCharacter(at: lastLineRange.upperBound), wrappedRow: wrappedRow)
+                let glyphIndex = layoutManager.glyphIndexForCharacter(at: lastLineRange.lowerBound - 1)
+                newLineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, wrappedRow: wrappedRow)
             case .upstream:
-                layoutManager.extraLineFragmentRect
+                let glyphIndex = layoutManager.glyphIndexForCharacter(at: lastLineRange.upperBound)
+                newLineRect = if layoutManager.isValidGlyphIndex(glyphIndex) {
+                    layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, wrappedRow: wrappedRow)
+                } else {
+                    layoutManager.extraLineFragmentRect
+                }
             @unknown default: fatalError()
         }
         
@@ -554,12 +578,19 @@ private extension NSLayoutManager {
     ///
     /// - Parameters:
     ///   - glyphIndex: The glyph index of the insertion point.
+    ///                 `numberOfGlyphs` is accepted for the insertion point at the end of the document.
     ///   - affinity: The current selection affinity.
     /// - Returns: The number of rows (0-based).
     func numberOfWrappedRows(at glyphIndex: Int, affinity: NSSelectionAffinity) -> Int {
         
-        let characterIndex = self.characterIndexForGlyph(at: glyphIndex)
-        let lineRange = (self.attributedString().string as NSString).lineRange(at: characterIndex)
+        guard self.isValidGlyphIndex(glyphIndex) || glyphIndex == self.numberOfGlyphs else {
+            assertionFailure()
+            return 0
+        }
+        
+        let string = self.attributedString().string as NSString
+        let characterIndex = (glyphIndex < self.numberOfGlyphs) ? self.characterIndexForGlyph(at: glyphIndex) : string.length
+        let lineRange = string.lineRange(at: characterIndex)
         let lineGlyphRange = self.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
         
         var count = 0

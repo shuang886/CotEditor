@@ -8,7 +8,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2024-2025 1024jp
+//  © 2024-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -47,6 +47,9 @@ struct NavigationBar: View {
             .help(String(localized: "Close split editor", table: "Document", comment: "tooltip for button"))
             .symbolEffect(.disappear, isActive: !self.splitState.canClose)
             .opacity(self.splitState.canClose ? 1 : 0)
+            .disabled(!self.splitState.canClose)
+            .allowsHitTesting(self.splitState.canClose)
+            .accessibilityHidden(!self.splitState.canClose)
             
             Divider()
                 .padding(.vertical, 4)
@@ -84,9 +87,9 @@ struct NavigationBar: View {
         }
         .buttonStyle(.borderless)
         .controlSize(.small)
-        .padding(.horizontal, isLiquidGlass ? 4 : 2)
+        .padding(.horizontal, 4)
         .background(.windowBackground)
-        .frame(height: isLiquidGlass ? 24 : 20)
+        .frame(height: 24)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Navigation Bar", table: "Document", comment: "accessibility label"))
     }

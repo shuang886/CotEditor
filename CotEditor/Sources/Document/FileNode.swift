@@ -25,6 +25,7 @@
 
 import Foundation
 import OSLog
+import DocumentFile
 import StringUtils
 import URLUtils
 
@@ -136,7 +137,7 @@ final class FileNode {
     private nonisolated static func readChildFiles(at fileURL: URL) throws -> [File] {
         
         try FileManager.default
-            .contentsOfDirectory(at: fileURL, includingPropertiesForKeys: Array(File.resourceValues))
+            .contentsOfDirectory(at: fileURL, includingPropertiesForKeys: Array(File.metadataResourceKeys))
             .filter { Self.accepts(filename: $0.lastPathComponent) }
             .map { try File(at: $0) }
             .sorted(using: Self.fileSortOrder)
@@ -334,24 +335,12 @@ extension FileNode {
     ///
     /// - Parameters:
     ///   - parent: The new parent node.
-    func move(to parent: FileNode) {
-        
-        let fileURL = parent.file.fileURL.appending(component: self.file.name).standardizedFileURL
-        
-        self.move(to: parent, fileURL: fileURL)
-    }
-    
-    
-    /// Moves to a new node.
-    ///
-    /// - Parameters:
-    ///   - parent: The new parent node.
     ///   - fileURL: The destination file URL after moving.
     func move(to parent: FileNode, fileURL: URL) {
         
         assert(parent.file.isDirectory)
         
-        self.parent?.cachedChildren?.removeFirst(self)
+        self.removeFromParent()
         
         self.parent = parent
         self.move(to: fileURL)
@@ -371,8 +360,8 @@ extension FileNode {
     }
     
     
-    /// Deletes the receiver from the node tree.
-    func delete() {
+    /// Removes the receiver from the node tree.
+    func removeFromParent() {
         
         self.parent?.cachedChildren?.removeFirst(self)
     }

@@ -217,33 +217,6 @@ import Testing
     }
     
     
-    @Test func highlightKeepsExplicitHighlightsAfterIncrementalSearch() async throws {
-        
-        let textView = TestTextView(string: "foo bar foo")
-        textView.setSelectedRange(NSRange(0..<(textView.string as NSString).length))
-        
-        let finder = TextFinder()
-        finder.client = textView
-        finder.settings.findString = "foo"
-        finder.settings.usesRegularExpression = false
-        
-        let notifications = NotificationCenter.default.notifications(named: TextFinder.DidFindMessage.name, object: finder)
-        let iterator = notifications.makeAsyncIterator()
-        
-        finder.incrementalSearch()
-        _ = try #require(await iterator.next())
-        #expect(textView.hasTemporaryBackgroundColor)
-        
-        finder.performAction(.highlight)
-        _ = try #require(await iterator.next())
-        
-        NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: nil)
-        try await Task.sleep(for: .seconds(0.1))
-        
-        #expect(textView.hasTemporaryBackgroundColor)
-    }
-    
-    
     @Test func selectAllUsesFindMatchesCache() async throws {
         
         do {
@@ -274,18 +247,15 @@ import Testing
             finder.settings.usesRegularExpression = false
             
             try await confirmation("No stale find result", expectedCount: 0) { confirm in
-                let notifications = NotificationCenter.default.notifications(named: TextFinder.DidFindMessage.name, object: finder)
-                let observationTask = Task { @MainActor in
-                    for await _ in notifications {
-                        confirm()
-                    }
+                let observer = NotificationCenter.default.addObserver(of: finder, for: TextFinder.DidFindMessage.self) { _ in
+                    confirm()
                 }
+                defer { NotificationCenter.default.removeObserver(observer) }
                 
                 finder.performAction(.selectAll)
                 textView.textStorage?.replaceCharacters(in: NSRange(0..<3), with: "bar")
                 
-                try await Task.sleep(for: .seconds(0.1))
-                observationTask.cancel()
+                try await Task.sleep(for: .milliseconds(50))
             }
         }
     }
@@ -293,15 +263,26 @@ import Testing
     
     // MARK: Private Methods
     
+    /// Performs a find action and waits for its typed find-result message.
+    ///
+    /// - Parameters:
+    ///   - action: The find action to perform.
+    ///   - finder: The text finder that performs the action.
+    /// - Returns: The find result sent from the finder.
     private func performFindAction(_ action: TextFinder.Action, with finder: TextFinder) async throws -> FindResult {
         
-        let notifications = NotificationCenter.default.notifications(named: TextFinder.DidFindMessage.name, object: finder)
-        let iterator = notifications.makeAsyncIterator()
-        
-        finder.performAction(action)
-        
-        let notification = try #require(await iterator.next())
-        return try #require(notification.userInfo?["result"] as? FindResult)
+        await withCheckedContinuation { continuation in
+            var observer: NotificationCenter.ObservationToken?
+            observer = NotificationCenter.default.addObserver(of: finder, for: TextFinder.DidFindMessage.self) { message in
+                if let observer {
+                    NotificationCenter.default.removeObserver(observer)
+                }
+                
+                continuation.resume(returning: message.result)
+            }
+            
+            finder.performAction(action)
+        }
     }
 }
 

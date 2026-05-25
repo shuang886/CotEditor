@@ -9,7 +9,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2023-2025 1024jp
+//  © 2023-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 //
 
 public import AppKit
-import SwiftUI
 
 public final class SettingsWindowController<Pane: SettingsPane>: NSWindowController {
     
@@ -48,6 +47,12 @@ public final class SettingsWindowController<Pane: SettingsPane>: NSWindowControl
     required init?(coder: NSCoder) {
         
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    
+    deinit {
+        // workaround a Swift 6.3.2 optimizer crash in release builds (2026-05, Xcode 26.5)
+        // to reproduce: `swift build --package-path Packages/MacUI -c release --target ControlUI`
     }
     
     

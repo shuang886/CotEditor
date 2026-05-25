@@ -9,7 +9,7 @@
 //
 //  ---------------------------------------------------------------------------
 //
-//  © 2018-2024 1024jp
+//  © 2018-2026 1024jp
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -49,16 +49,22 @@ extension SortPattern {
     /// - Parameters:
     ///   - string: The string to sort.
     ///   - options: Compare options for sort.
+    ///   - baseLineEnding: The line ending to add when a line without one moves before a line-ending slot.
     /// - Returns: Sorted string.
-    public func sort(_ string: String, options: SortOptions = SortOptions()) -> String {
+    public func sort(_ string: String, options: SortOptions = SortOptions(), baseLineEnding: String? = nil) -> String {
         
-        guard let lineEnding = string.firstLineEnding else { return string }
+        var lines = string.logicalLines(in: string.range)
+        let includesTrailingLineEnding = (lines.last?.lineEnding != nil)
         
-        var lines = string.components(separatedBy: .newlines)
+        guard
+            lines.count > 1,
+            let baseLineEnding = baseLineEnding ?? lines.compactMap(\.lineEnding).first
+        else { return string }
+        
         let firstLine = options.keepsFirstLine ? lines.removeFirst() : nil
         
         lines = lines
-            .map { (line: $0, key: self.sortKey(for: $0)) }
+            .map { (line: $0, key: self.sortKey(for: $0.contents)) }
             .sorted {
                 switch ($0.key, $1.key) {
                     case let (.some(key0), .some(key1)):
@@ -75,8 +81,11 @@ extension SortPattern {
                     case (.none, .some):
                         return false
                         
-                    case (.some, .none), (.none, .none):
+                    case (.some, .none):
                         return true
+                        
+                    case (.none, .none):
+                        return false
                 }
             }
             .map(\.line)
@@ -89,6 +98,6 @@ extension SortPattern {
             lines.insert(firstLine, at: 0)
         }
         
-        return lines.joined(separator: String(lineEnding))
+        return lines.joined(baseLineEnding: baseLineEnding, includingTrailingLineEnding: includesTrailingLineEnding)
     }
 }

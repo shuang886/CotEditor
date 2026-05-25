@@ -38,20 +38,20 @@ protocol AdditionalDocumentPreparing: NSDocument {
 }
 
 
-final class DocumentController: NSDocumentController {
+@Observable final class DocumentController: NSDocumentController {
     
     // MARK: Public Properties
     
-    @Published private(set) var currentSyntaxName: String?
+    private(set) var currentSyntaxName: String?
     
     
     // MARK: Private Properties
     
-    private let transientDocumentLock = NSLock()
-    private var deferredDocuments: [NSDocument] = []
+    private var deferredDocuments: [Document]?  // non-nil while replacing a transient document
     
     private var mainWindowObserver: AnyCancellable?
-    private var syntaxObserver: AnyCancellable?
+    private var fileDocumentObserver: AnyCancellable?
+    private var syntaxObserver: Task<Void, Never>?
     
     
     // MARK: Lifecycle
@@ -66,10 +66,16 @@ final class DocumentController: NSDocumentController {
         self.mainWindowObserver = NSApp.publisher(for: \.mainWindow)
             .debounce(for: .seconds(0.1), scheduler: RunLoop.main)
             .map { $0?.windowController as? DocumentWindowController }
-            .map { $0?.fileDocument as? Document }
-            .sink { [unowned self] document in
-                self.syntaxObserver = document?.$syntaxName
-                    .sink { self.currentSyntaxName = $0 }
+            .sink { [unowned self] windowController in
+                guard let windowController else {
+                    self.fileDocumentObserver = nil
+                    self.observeSyntax(of: nil)
+                    return
+                }
+                
+                self.fileDocumentObserver = windowController.publisher(for: \.fileDocument, options: .initial)
+                    .debounce(for: .seconds(0.1), scheduler: RunLoop.main)
+                    .sink { [unowned self] in self.observeSyntax(of: $0 as? Document) }
             }
     }
     
@@ -95,41 +101,66 @@ final class DocumentController: NSDocumentController {
         }
         
         // obtain transient document if exists
-        let transientDocument: Document? = self.transientDocumentLock.withLock { [unowned self] in
-            guard
-                let document = self.transientDocument,
-                document.windowForSheet?.attachedSheet == nil
-            else { return nil }
-            
+        let transientDocument: Document?
+        if let document = self.transientDocument,
+           document.windowForSheet?.attachedSheet == nil
+        {
             document.isTransient = false
-            self.deferredDocuments.removeAll()
-            return document
+            self.deferredDocuments = []
+            transientDocument = document
+        } else {
+            transientDocument = nil
         }
         
-        let (document, documentWasAlreadyOpen) = try await super.openDocument(withContentsOf: url, display: false)
+        let document: NSDocument
+        let documentWasAlreadyOpen: Bool
+        do {
+            (document, documentWasAlreadyOpen) = try await super.openDocument(withContentsOf: url, display: false)
+        } catch {
+            if let transientDocument {
+                if let document = self.deferredDocuments?.first {
+                    self.deferredDocuments?.removeFirst()
+                    self.replaceTransientDocument(transientDocument, with: document)
+                    document.makeWindowControllers()
+                    document.showWindows()
+                } else {
+                    // restore the reserved transient document when the opening flow failed
+                    transientDocument.isTransient = true
+                }
+                self.displayDeferredDocuments()
+            }
+            throw error
+        }
         
-        if let transientDocument, let document = document as? Document {
-            self.replaceTransientDocument(transientDocument, with: document)
+        if let document = document as? Document {
+            if let transientDocument {
+                self.replaceTransientDocument(transientDocument, with: document)
+                if displayDocument {
+                    document.makeWindowControllers()
+                    document.showWindows()
+                }
+                
+                self.displayDeferredDocuments()
+                
+            } else if displayDocument {
+                if self.deferredDocuments != nil {
+                    // defer displaying this document, because the transient document has not yet been replaced
+                    self.deferredDocuments?.append(document)
+                } else {
+                    // display the document immediately, because the transient document has been replaced
+                    document.makeWindowControllers()
+                    document.showWindows()
+                }
+            }
+            
+        } else {
+            assertionFailure("The opened document should be Document.")
+            
+            transientDocument?.isTransient = true
+            self.displayDeferredDocuments()
             if displayDocument {
                 document.makeWindowControllers()
                 document.showWindows()
-            }
-            
-            // display all deferred documents since the transient document has been replaced
-            for deferredDocument in self.deferredDocuments {
-                deferredDocument.makeWindowControllers()
-                deferredDocument.showWindows()
-            }
-            self.deferredDocuments.removeAll()
-            
-        } else if displayDocument {
-            if self.deferredDocuments.isEmpty {
-                // display the document immediately, because the transient document has been replaced
-                document.makeWindowControllers()
-                document.showWindows()
-            } else {
-                // defer displaying this document, because the transient document has not yet been replaced
-                self.deferredDocuments.append(document)
             }
         }
         
@@ -376,6 +407,26 @@ final class DocumentController: NSDocumentController {
     }
     
     
+    /// Observes the given document's syntax as the current syntax.
+    ///
+    /// - Parameter document: The document to observe.
+    private func observeSyntax(of document: Document?) {
+        
+        self.syntaxObserver?.cancel()
+        
+        if let document {
+            self.syntaxObserver = Task { [weak self, document] in
+                for await syntaxName in Observations({ document.syntaxName }) {
+                    self?.currentSyntaxName = syntaxName
+                }
+            }
+        } else {
+            self.syntaxObserver = nil
+            self.currentSyntaxName = nil
+        }
+    }
+    
+    
     /// Checks file before creating a new document instance.
     ///
     /// - Parameters:
@@ -420,6 +471,19 @@ final class DocumentController: NSDocumentController {
         guard let context: DelegateContext = bridgeUnwrapped(contextInfo) else { return assertionFailure() }
         
         context.perform(from: self, flag: didCloseAll)
+    }
+    
+    
+    /// Displays all documents deferred while replacing a transient document.
+    private func displayDeferredDocuments() {
+        
+        guard let deferredDocuments else { return }
+        
+        for deferredDocument in deferredDocuments {
+            deferredDocument.makeWindowControllers()
+            deferredDocument.showWindows()
+        }
+        self.deferredDocuments = nil
     }
 }
 

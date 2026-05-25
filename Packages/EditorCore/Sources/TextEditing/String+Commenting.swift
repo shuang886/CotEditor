@@ -27,7 +27,7 @@
 public import Foundation
 public import StringUtils
 
-public protocol CommentDelimiters {
+public protocol CommentDelimiters: Sendable {
     
     var inlineDelimiters: [String] { get }
     var blockDelimiters: [BlockCommentDelimiter] { get }
@@ -93,6 +93,7 @@ public extension String {
     ///   - appendsSpacer: Whether to insert a single space between delimiter and string.
     ///   - selectedRanges: The current selected ranges in the editor.
     ///   - location: The location type to insert comment delimiters.
+    /// - Returns: An `EditingContext`, or `nil` if no delimiter could be inserted.
     func commentOut(types: CommentTypes, delimiters: any CommentDelimiters, appendsSpacer: Bool, in selectedRanges: [NSRange], at location: CommentOutLocation) -> EditingContext? {
         
         guard !delimiters.isEmpty else { return nil }
@@ -123,6 +124,7 @@ public extension String {
     ///   - delimiters: The comment delimiters to remove.
     ///   - appendsSpacer: Whether a single space is expected between delimiter and string.
     ///   - selectedRanges: The current selected ranges in the editor.
+    /// - Returns: An `EditingContext`, or `nil` if no delimiter was found to remove.
     func uncomment(delimiters: any CommentDelimiters, appendsSpacer: Bool, in selectedRanges: [NSRange]) -> EditingContext? {
         
         guard !delimiters.isEmpty else { return nil }
@@ -234,12 +236,12 @@ extension String {
                 ranges
                     .map(self.lineContentsRange(for:))
                     .merged
-            case .afterIndent:
+            case .afterIndent(let tabWidth):
                 ranges
                     .map(self.lineContentsRange(for:))
                     .map {
-                        let range = (self as NSString).range(of: "[ \\t]*", options: [.regularExpression, .anchored], range: $0)
-                        return NSRange(range.upperBound..<$0.upperBound)
+                        let lowerBound = self.minimumCommonIndentationLocations(for: [$0], tabWidth: tabWidth).first ?? $0.lowerBound
+                        return NSRange(lowerBound..<$0.upperBound)
                     }
                     .merged
         }

@@ -39,8 +39,9 @@ extension NSTextView {
     /// - Throws: `CancellationError`
     final func highlight(_ definition: MultipleReplace, inSelection: Bool) async throws -> String {
         
+        let wasEditable = self.isEditable
         self.isEditable = false
-        defer { self.isEditable = true }
+        defer { self.isEditable = wasEditable }
         
         let string = self.string.immutable
         let selectedRanges = self.selectedRanges.map(\.rangeValue)
@@ -51,11 +52,10 @@ extension NSTextView {
                 .sorted(using: KeyPathComparator(\.location))
         }
         
-        // setup progress sheet
-        let indicatorView = FindProgressView(String(localized: "Highlight All", table: "TextFind"), progress: progress, action: .find)
-        let indicator = NSHostingController(rootView: indicatorView)
-        indicator.rootView.dismiss = { indicator.dismiss(nil) }
-        self.viewControllerForSheet?.presentAsSheet(indicator)
+        // present progress view
+        self.window?.beginSheet {
+            FindProgressView(String(localized: "Highlight All", table: "TextFind"), progress: progress, action: .find)
+        }
         
         // perform
         let ranges = try await withTaskCancellationHandler {
@@ -64,7 +64,7 @@ extension NSTextView {
             task.cancel()
         }
         
-        self.isEditable = true
+        self.isEditable = wasEditable
         
         if progress.count > 0 {
             // apply to the text view
@@ -92,8 +92,9 @@ extension NSTextView {
     /// - Throws: `CancellationError`
     @discardableResult final func replaceAll(_ definition: MultipleReplace, inSelection: Bool) async throws -> String {
         
+        let wasEditable = self.isEditable
         self.isEditable = false
-        defer { self.isEditable = true }
+        defer { self.isEditable = wasEditable }
         
         let string = self.string.immutable
         let selectedRanges = self.selectedRanges.map(\.rangeValue)
@@ -103,11 +104,10 @@ extension NSTextView {
             try definition.replace(string: string, ranges: selectedRanges, inSelection: inSelection, progress: progress)
         }
         
-        // setup progress sheet
-        let indicatorView = FindProgressView(String(localized: "Replace All", table: "TextFind"), progress: progress, action: .replace)
-        let indicator = NSHostingController(rootView: indicatorView)
-        indicator.rootView.dismiss = { indicator.dismiss(nil) }
-        self.viewControllerForSheet?.presentAsSheet(indicator)
+        // present progress view
+        self.window?.beginSheet {
+            FindProgressView(String(localized: "Replace All", table: "TextFind"), progress: progress, action: .replace)
+        }
         
         // perform
         let result = try await withTaskCancellationHandler {
@@ -116,7 +116,7 @@ extension NSTextView {
             task.cancel()
         }
         
-        self.isEditable = true
+        self.isEditable = wasEditable
         
         if progress.count > 0 {
             // apply to the text view

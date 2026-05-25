@@ -7,6 +7,13 @@
       "awk"
     ]
   },
+  "Ada" : {
+    "extensions" : [
+      "ada",
+      "adb",
+      "ads"
+    ]
+  },
   "Apache" : {
     "extensions" : [
       "conf"
@@ -227,7 +234,6 @@
   "LaTeX" : {
     "extensions" : [
       "tex",
-      "TEX",
       "sty",
       "cls"
     ]
@@ -381,11 +387,6 @@
     ],
     "interpreters" : [
       "Rscript"
-    ]
-  },
-  "Rich Text Format" : {
-    "extensions" : [
-      "rtf"
     ]
   },
   "Ruby" : {

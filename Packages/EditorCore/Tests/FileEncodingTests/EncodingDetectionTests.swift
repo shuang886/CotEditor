@@ -30,32 +30,6 @@ import Testing
 
 struct EncodingDetectionTests {
     
-    @Test(.bug("https://bugs.swift.org/browse/SR-10173"))
-    func utf8BOM() throws {
-        
-        // -> String(data:encoding:) preserves BOM since Swift 5 (2019-03)
-        // -> This issue has already solved in macOS 26 (2025-09)
-        let data = try self.dataForFileName("UTF-8 BOM")
-        if #available(macOS 26, *) {
-            #expect(String(data: data, encoding: .utf8) == "0")
-        } else {
-            withKnownIssue {
-                #expect(String(data: data, encoding: .utf8) == "0")
-            }
-            #expect(String(data: data, encoding: .utf8) == "\u{FEFF}0")
-        }
-        #expect(String(bomCapableData: data, encoding: .utf8) == "0")
-        
-        let (string, encoding) = try String.string(data: data, options: .init(candidates: String.Encoding.utfEncodings))
-        
-        #expect(string == "0")
-        #expect(encoding == .utf8)
-        
-        #expect(String(bomCapableData: Data(Unicode.BOM.utf8.sequence), encoding: .utf8)?.isEmpty == true)
-        #expect(String(bomCapableData: Data(), encoding: .utf8)?.isEmpty == true)
-    }
-    
-    
     @Test func utf16() throws {
         
         let data = try self.dataForFileName("UTF-16")
@@ -73,6 +47,24 @@ struct EncodingDetectionTests {
         
         #expect(string == "0")
         #expect(encoding == .utf32)
+    }
+    
+    
+    @Test func unicodeBOMWithEndianSpecificCandidate() throws {
+        
+        let testCases: [(data: Data, candidate: String.Encoding, detected: String.Encoding)] = [
+            (Data([0xFE, 0xFF, 0x00, 0x30]), .utf16BigEndian, .utf16),
+            (Data([0xFF, 0xFE, 0x30, 0x00]), .utf16LittleEndian, .utf16),
+            (Data([0x00, 0x00, 0xFE, 0xFF, 0x00, 0x00, 0x00, 0x30]), .utf32BigEndian, .utf32),
+            (Data([0xFF, 0xFE, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00]), .utf32LittleEndian, .utf32),
+        ]
+        
+        for testCase in testCases {
+            let (string, encoding) = try String.string(data: testCase.data, options: .init(candidates: [testCase.candidate]))
+            
+            #expect(string == "0")
+            #expect(encoding == testCase.detected)
+        }
     }
     
     
@@ -95,6 +87,16 @@ struct EncodingDetectionTests {
         #expect(throws: CocoaError(.fileReadUnknownStringEncoding)) {
             try String.string(data: data, options: .init(candidates: []))
         }
+    }
+    
+    
+    @Test func utf8BOM() throws {
+        
+        let data = try self.dataForFileName("UTF-8 BOM")
+        let (string, encoding) = try String.string(data: data, options: .init(candidates: [.utf8]))
+        
+        #expect(string == "0")
+        #expect(encoding == .utf8)
     }
     
     
@@ -125,6 +127,7 @@ struct EncodingDetectionTests {
         
         let withBOMData = try self.dataForFileName("UTF-8 BOM")
         #expect(withBOMData.starts(with: Unicode.BOM.utf8.sequence))
+        #expect(String(data: withBOMData, encoding: .utf8) == "0")
         
         let data = try self.dataForFileName("UTF-8")
         #expect(!data.starts(with: Unicode.BOM.utf8.sequence))
@@ -149,6 +152,9 @@ struct EncodingDetectionTests {
         #expect(Data("<meta charset=\"utf-8\" 犬".utf8).scanEncodingDeclaration() == .utf8)
         #expect(Data("犬<meta charset=\"utf-8\"".utf8).scanEncodingDeclaration() == nil)
         #expect(Data("<meta charset=utf-8".utf8).scanEncodingDeclaration() == nil)
+        
+        #expect(Data("<meta charset=\"utf-8\">\n# coding: shift-jis".utf8).scanEncodingDeclaration() == .utf8)
+        #expect(Data("# coding: shift-jis\n<meta charset=\"utf-8\">".utf8).scanEncodingDeclaration() == .shiftJIS)
         
         // CSS (@charset)
         #expect(Data("@charset \"utf-8\";".utf8).scanEncodingDeclaration() == .utf8)
