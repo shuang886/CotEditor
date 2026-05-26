@@ -141,11 +141,11 @@
 
 ; Includes
 
-(module_import "@import" @include path: (identifier) @namespace)
+(module_import "@import" @keywords path: (identifier) @types)
 
 ((preproc_include
   _ @keywords path: (_))
-  (#any-of? @include "#include" "#import"))
+  (#any-of? @keywords "#include" "#import"))
 
 ; Type Qualifiers
 
@@ -235,8 +235,8 @@
 
 ; Constructors
 
-((message_expression method: (identifier) @constructor)
-  (#eq? @constructor "init"))
+((message_expression method: (identifier) @commands)
+  (#eq? @commands "init"))
 
 ; Attributes
 
@@ -277,20 +277,20 @@
     "__unsafe_unretained"
     "__unused"
     "__weak"
-  ]) @function.macro.builtin
+  ]) @keywords
 
-[ "__real" "__imag" ] @function.macro.builtin
+[ "__real" "__imag" ] @keywords
 
-((call_expression function: (identifier) @function.macro)
-  (#eq? @function.macro "testassert"))
+((call_expression function: (identifier) @keywords)
+  (#eq? @keywords "testassert"))
 
 ; Types
 
 (class_declaration (identifier) @types)
 
-(class_interface "@interface" . (identifier) @types superclass: _? @types category: _? @namespace)
+(class_interface "@interface" . (identifier) @types superclass: _? @types category: _? @types)
 
-(class_implementation "@implementation" . (identifier) @types superclass: _? @types category: _? @namespace)
+(class_implementation "@implementation" . (identifier) @types superclass: _? @types category: _? @types)
 
 (protocol_forward_declaration (identifier) @types) ; @interface :(
 
@@ -312,39 +312,39 @@
 
 ; Properties
 
-(property_implementation "@synthesize" (identifier) @property)
+(property_implementation "@synthesize" (identifier) @attributes)
 
-((identifier) @property
-  (#has-ancestor? @property struct_declaration))
+((identifier) @attributes
+  (#has-ancestor? @attributes struct_declaration))
 
 ; Parameters
 
-(method_parameter ":" @commands (identifier) @parameter)
+(method_parameter ":" @commands (identifier) @attributes)
 
-(method_parameter declarator: (identifier) @parameter)
+(method_parameter declarator: (identifier) @attributes)
 
 (parameter_declaration 
   declarator: (function_declarator 
                 declarator: (parenthesized_declarator 
                               (block_pointer_declarator 
-                                declarator: (identifier) @parameter))))
+                                declarator: (identifier) @attributes))))
 
-"..." @parameter.builtin
+"..." @attributes
 
 ; Operators
 
 [
   "^"
-] @operator
+] @keywords
 
 ; Literals
 
-(platform) @string.special
+(platform) @strings
 
-(version_number) @text.uri @number
+(version_number) @strings @numbers
 
 ; Punctuation
 
-"@" @punctuation.special
+"@" @keywords
 
-[ "<" ">" ] @punctuation.bracket
+[ "<" ">" ] @keywords

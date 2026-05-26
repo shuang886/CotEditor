@@ -306,7 +306,6 @@
   "Objective-C" : {
     "extensions" : [
       "m",
-      "mm",
       "h"
     ]
   },
