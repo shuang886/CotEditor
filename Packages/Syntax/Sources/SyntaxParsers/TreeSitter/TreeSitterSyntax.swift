@@ -37,6 +37,7 @@ import TreeSitterJava
 import TreeSitterJavaScript
 import TreeSitterKotlin
 import TreeSitterLatex
+import TreeSitterLilyPond
 import TreeSitterLua
 import TreeSitterMake
 import TreeSitterMarkdown
@@ -63,6 +64,7 @@ public enum TreeSitterSyntax: String, CaseIterable, Sendable {
     case javaScript = "JavaScript"
     case kotlin = "Kotlin"
     case latex = "LaTeX"
+    case lilypond = "LilyPond"
     case lua = "Lua"
     case makefile = "Makefile"
     case markdown = "Markdown"
@@ -115,6 +117,7 @@ public enum TreeSitterSyntax: String, CaseIterable, Sendable {
             case .javaScript: unsafe tree_sitter_javascript()
             case .kotlin: unsafe tree_sitter_kotlin()
             case .latex: unsafe tree_sitter_latex()
+            case .lilypond: unsafe tree_sitter_lilypond()
             case .lua: unsafe tree_sitter_lua()
             case .makefile: unsafe tree_sitter_make()
             case .markdown: unsafe tree_sitter_markdown()

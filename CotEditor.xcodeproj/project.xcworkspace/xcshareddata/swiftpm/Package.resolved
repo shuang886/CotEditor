@@ -155,6 +155,15 @@
       }
     },
     {
+      "identity" : "tree-sitter-lilypond",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nwhetsell/tree-sitter-lilypond",
+      "state" : {
+        "branch" : "main",
+        "revision" : "0790d0dd272d4728b4a466bb71f57ce7381116aa"
+      }
+    },
+    {
       "identity" : "tree-sitter-lua",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/1024jp/tree-sitter-lua",

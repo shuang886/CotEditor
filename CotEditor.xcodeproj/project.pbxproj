@@ -333,6 +333,7 @@
 				2AB756AF2C25BBA4005E04C3 /* XCRemoteSwiftPackageReference "SwiftLintPlugins" */,
 				2ABB27CC2C3824DE00AFCD0B /* XCRemoteSwiftPackageReference "swift-numerics" */,
 				B01D03F42F9E95C500210168 /* XCRemoteSwiftPackageReference "tree-sitter-objc" */,
+				B00BC4EC2F9FA65C0008BD8E /* XCRemoteSwiftPackageReference "tree-sitter-lilypond" */,
 			);
 			preferredProjectObjectVersion = 100;
 			productRefGroup = 2A7380232CAD911F00E870E5 /* Products */;
@@ -1068,6 +1069,14 @@
 			requirement = {
 				kind = exactVersion;
 				version = 3.0.2;
+			};
+		};
+		B00BC4EC2F9FA65C0008BD8E /* XCRemoteSwiftPackageReference "tree-sitter-lilypond" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nwhetsell/tree-sitter-lilypond";
+			requirement = {
+				branch = main;
+				kind = branch;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
