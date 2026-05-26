@@ -75,6 +75,7 @@ struct TreeSitterSampleHighlightTests {
             case .javaScript: "test.js"
             case .kotlin: "test.kt"
             case .latex: "test.tex"
+            case .lilypond: "test.ly"
             case .lua: "test.lua"
             case .makefile: "Makefile"
             case .markdown: "test.md"

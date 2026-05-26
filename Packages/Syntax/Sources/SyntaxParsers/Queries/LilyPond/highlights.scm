@@ -67,12 +67,12 @@
 
 (
   (string
-    "\"" @string.delimiter.left
+    "\"" @strings
     [
       (string_fragment)?
-      (escape_sequence)? @string.escape
+      (escape_sequence)? @characters
     ]
-    "\"" @string.delimiter.right
+    "\"" @strings
   )
 ) @strings
 
